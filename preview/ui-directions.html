@@ -1,0 +1,296 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>UI 방향 비교</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&family=Jua&family=DM+Mono:wght@500&display=swap">
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#15131c;color:#eae6f5;font:14px/1.6 'Noto Sans KR',sans-serif}
+.page{max-width:1120px;margin:0 auto;padding:24px 16px 60px}
+h1{font:900 26px/1.3 'Noto Sans KR';margin:0 0 4px}
+.lead{color:#a79fc0;margin:0 0 24px;max-width:46em}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px}
+.opt{border-radius:16px;overflow:hidden;background:#1e1b28;border:1px solid #332e45}
+.opt > header{padding:12px 14px;border-bottom:1px solid #332e45}
+.opt h2{margin:0;font:900 17px/1.3 'Noto Sans KR'}
+.opt .tag{font-size:11px;letter-spacing:.14em;color:#8f86ab;font-weight:700}
+.opt .note{margin:6px 0 0;font-size:12.5px;color:#a79fc0}
+.stage{height:430px;position:relative;overflow:hidden}
+.stage canvas,.stage svg{display:block}
+.verdict{padding:10px 14px;font-size:12.5px;border-top:1px solid #332e45;color:#c7c0dc}
+.verdict b{color:#ffd23f}
+
+/* A. 진짜 3D */
+#a3d{width:100%;height:100%;display:block;background:#efe6d6}
+.a-ui{position:absolute;left:0;right:0;bottom:0;padding:12px;display:grid;gap:8px;
+  background:linear-gradient(180deg,transparent,rgba(60,46,30,.5))}
+.a-btn{border:0;border-radius:16px;padding:12px;font:700 17px 'Jua',sans-serif;color:#fff;cursor:pointer;
+  background:linear-gradient(180deg,#ff8475,#e04a38);box-shadow:0 6px 0 #9c2a1c,0 12px 20px rgba(0,0,0,.35)}
+.a-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.a-btn.b{background:linear-gradient(180deg,#8fd2f5,#4ba3d8);color:#09334a;box-shadow:0 6px 0 #27688f,0 12px 20px rgba(0,0,0,.35)}
+
+/* B. 픽셀 CRT */
+.b-wrap{position:absolute;inset:0;background:#0d0f14;padding:14px;display:grid;grid-template-rows:1fr auto;gap:10px}
+#bpx{width:100%;image-rendering:pixelated;border:3px solid #2c3444;background:#121722;align-self:center}
+.b-scan{position:absolute;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(180deg,rgba(0,0,0,.42) 0 1px,transparent 1px 3px);
+  box-shadow:inset 0 0 70px rgba(0,0,0,.95)}
+.b-ui{display:grid;gap:7px;font-family:'DM Mono',ui-monospace,monospace}
+.b-bar{border:2px solid #3cf2a0;padding:5px 9px;font-size:11px;color:#3cf2a0;letter-spacing:.1em;
+  text-shadow:0 0 8px #3cf2a0;display:flex;justify-content:space-between}
+.b-row{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.b-btn{border:2px solid currentColor;background:#0d1118;padding:9px;font:700 14px 'DM Mono',monospace;
+  cursor:pointer;letter-spacing:.08em}
+.b-btn.r{color:#ff5470;text-shadow:0 0 9px #ff5470;box-shadow:0 0 14px rgba(255,84,112,.3) inset}
+.b-btn.c{color:#49d8ff;text-shadow:0 0 9px #49d8ff;box-shadow:0 0 14px rgba(73,216,255,.3) inset}
+
+/* C. 플랫 그래픽 */
+.c-wrap{position:absolute;inset:0;background:#faf4e6;padding:16px;display:grid;grid-template-rows:auto 1fr auto;gap:10px}
+.c-head{display:flex;justify-content:space-between;align-items:baseline}
+.c-head b{font:900 20px 'Noto Sans KR';color:#1b1b1b}
+.c-head span{font:700 12px 'Noto Sans KR';color:#8a8276;letter-spacing:.1em}
+.c-art{background:#ff5a4a;border-radius:0;display:grid;place-items:center;position:relative;overflow:hidden}
+.c-art::before{content:"";position:absolute;inset:0;
+  background:repeating-linear-gradient(135deg,rgba(0,0,0,.055) 0 9px,transparent 9px 18px)}
+.c-art svg{width:62%;max-width:190px;position:relative}
+.c-ui{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.c-btn{border:3px solid #1b1b1b;background:#ffd23f;padding:11px;font:900 16px 'Noto Sans KR';cursor:pointer;
+  box-shadow:5px 5px 0 #1b1b1b;color:#1b1b1b}
+.c-btn.k{background:#49b6e8}
+
+/* D. 리소 인쇄 */
+.d-wrap{position:absolute;inset:0;background:#f2ece0;padding:14px;display:grid;grid-template-rows:1fr auto;gap:10px}
+#driso{width:100%;align-self:center;mix-blend-mode:multiply}
+.d-paper{position:absolute;inset:0;pointer-events:none;opacity:.5;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='4'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23p)'/%3E%3C/svg%3E");
+  mix-blend-mode:multiply}
+.d-ui{display:grid;gap:7px;position:relative}
+.d-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.d-btn{border:2.5px solid #2b2420;background:transparent;padding:10px;font:700 15px 'Noto Sans KR';cursor:pointer;
+  color:#2b2420;border-radius:3px;position:relative}
+.d-btn::after{content:"";position:absolute;inset:-2.5px;border:2.5px solid #ff4d6d;border-radius:3px;
+  transform:translate(2.5px,2.5px);mix-blend-mode:multiply;pointer-events:none;opacity:.8}
+.d-btn.b::after{border-color:#2f6fd0}
+.d-cap{font:700 11px 'Noto Sans KR';letter-spacing:.14em;color:#6b6258}
+</style></head><body>
+<div class="page">
+<h1>UI 방향 네 가지</h1>
+<p class="lead">같은 야차를 네 가지 방식으로 렌더링했습니다. 전부 코드로 그린 것이고, 이미지 파일은 하나도 쓰지 않았습니다. 지금 버전(펠트)이 왜 어설펐는지와, 각 방향이 무엇을 포기하고 무엇을 얻는지 아래에 적었습니다.</p>
+<div class="grid" id="grid"></div>
+</div>
+<script>
+const OPTS = [
+  { id:'a', tag:'방향 A', h:'진짜 3D (실시간 레이마칭)', note:'도형을 수식으로 정의하고 빛을 실제로 계산합니다. 그림자·음영·가장자리 빛이 전부 진짜라 흉내가 아닙니다.',
+    v:'<b>입체감이 진짜입니다.</b> 돌리고 비추는 게 다 됩니다. 대신 캐릭터를 구 덩어리로 다시 조형해야 하고, 저사양 폰에서 발열이 있습니다.',
+    body:`<canvas id="a3d"></canvas><div class="a-ui"><div class="a-row"><button class="a-btn">주의</button><button class="a-btn b">칭찬</button></div></div>` },
+  { id:'b', tag:'방향 B', h:'픽셀 아트 + CRT 모니터', note:'낮은 해상도가 의도된 미학이라 어설퍼 보일 수가 없습니다. 감시 카메라라는 설정과도 맞습니다.',
+    v:'<b>완성도가 가장 안정적입니다.</b> 코드가 제일 잘하는 영역이고 용량도 작습니다. 다만 귀여움의 폭이 좁고, 8마리 구분이 작은 화면에서 빡빡합니다.',
+    body:`<div class="b-wrap"><canvas id="bpx" width="160" height="128"></canvas><div class="b-ui"><div class="b-bar"><span>REC 19:40:42</span><span>MOOD 68</span></div><div class="b-row"><button class="b-btn r">[ 주의 ]</button><button class="b-btn c">[ 칭찬 ]</button></div></div><div class="b-scan"></div></div>` },
+  { id:'c', tag:'방향 C', h:'플랫 그래픽 (포스터)', note:'질감을 전부 버리고 굵은 선, 강한 색면, 큰 여백으로 갑니다. 지금 요괴 그림을 그대로 씁니다.',
+    v:'<b>가장 안전하고 가장 빠릅니다.</b> 모바일에서 제일 선명하고 숏폼 썸네일로도 강합니다. 대신 "입체감"은 완전히 포기하는 선택입니다.',
+    body:`<div class="c-wrap"><div class="c-head"><b>야차</b><span>분노 · 주방</span></div><div class="c-art" id="cart"></div><div class="c-ui"><button class="c-btn">주의</button><button class="c-btn k">칭찬</button></div></div>` },
+  { id:'d', tag:'방향 D', h:'리소그라프 인쇄', note:'형광 잉크 두 색을 망점으로 겹쳐 찍고 살짝 어긋나게 합니다. 인쇄물은 원래 평면이라 어색함이 없습니다.',
+    v:'<b>아날로그 감성인데 코드가 잘합니다.</b> 망점은 벡터라 완벽하게 찍힙니다. 색이 두세 가지로 제한되는 게 제약이자 개성입니다.',
+    body:`<div class="d-wrap"><canvas id="driso" width="300" height="300"></canvas><div class="d-ui"><div class="d-cap">SPOOKMATE / KITCHEN CAM</div><div class="d-row"><button class="d-btn">주의</button><button class="d-btn b">칭찬</button></div></div><div class="d-paper"></div></div>` }
+];
+document.getElementById('grid').innerHTML = OPTS.map(o =>
+  `<section class="opt"><header><span class="tag">${o.tag}</span><h2>${o.h}</h2><p class="note">${o.note}</p></header><div class="stage">${o.body}</div><div class="verdict">${o.v}</div></section>`).join('');
+
+/* ══ A. 레이마칭 3D ══ */
+const FS = `#version 300 es
+precision highp float;
+out vec4 O; uniform vec2 iR; uniform float iT;
+const vec3 BODY=vec3(.96,.21,.14), HORN=vec3(.99,.95,.80), MOUTH=vec3(.17,.03,.05);
+float sdEll(vec3 p, vec3 r){ float k0=length(p/r), k1=length(p/(r*r)); return k0*(k0-1.)/k1; }
+float smin(float a,float b,float k){ float h=clamp(.5+.5*(b-a)/k,0.,1.); return mix(b,a,h)-k*h*(1.-h); }
+float horn(vec3 p, float sx){
+  float d=1e9;
+  for(int i=0;i<5;i++){ float t=float(i)/4.;
+    vec3 c=vec3(sx*(.46+t*.30), .60+t*.62, -.06-t*.12);
+    d=smin(d, length(p-c)-mix(.20,.035,t), .09); }
+  return d;
+}
+vec2 map(vec3 p){
+  vec3 q=p; q.y-=.02;
+  float d=sdEll(q, vec3(.95,.86,.88));
+  d=smin(d, length(q-vec3(-.60,-.14,.40))-.30, .30);
+  d=smin(d, length(q-vec3( .60,-.14,.40))-.30, .30);
+  vec2 r=vec2(d,0.);
+  float h=min(horn(q,-1.), horn(q,1.));
+  if(h<r.x) r=vec2(h,1.);
+  float m=sdEll(q-vec3(0.,-.36,.62), vec3(.40,.22,.30));
+  if(m<r.x) r=vec2(m,2.);
+  float e=min(length(q-vec3(-.30,.13,.76))-.195, length(q-vec3(.30,.13,.76))-.195);
+  if(e<r.x) r=vec2(e,3.);
+  float g=p.y+.94;
+  if(g<r.x) r=vec2(g,4.);
+  return r;
+}
+vec3 nor(vec3 p){ vec2 e=vec2(.0012,0);
+  return normalize(vec3(map(p+e.xyy).x-map(p-e.xyy).x, map(p+e.yxy).x-map(p-e.yxy).x, map(p+e.yyx).x-map(p-e.yyx).x)); }
+float sha(vec3 ro, vec3 rd){ float r=1., t=.04;
+  for(int i=0;i<48;i++){ float h=map(ro+rd*t).x; if(h<.001) return 0.; r=min(r,10.*h/t); t+=clamp(h,.01,.18); if(t>5.) break; }
+  return clamp(r,0.,1.); }
+float ao(vec3 p, vec3 n){ float o=0., s=1.;
+  for(int i=0;i<5;i++){ float h=.015+.11*float(i); o+=(h-map(p+n*h).x)*s; s*=.72; }
+  return clamp(1.-1.6*o,0.,1.); }
+void main(){
+  vec2 uv=(gl_FragCoord.xy*2.-iR)/iR.y;
+  float a=sin(iT*.35)*.42;
+  vec3 ro=vec3(sin(a)*3.5,.52,cos(a)*3.5);
+  vec3 ww=normalize(vec3(0.,-.06,0.)-ro), uu=normalize(cross(vec3(0,1,0),ww)), vv=cross(ww,uu);
+  vec3 rd=normalize(uv.x*uu+uv.y*vv+2.4*ww);
+  float t=.1; vec2 h=vec2(-1.);
+  for(int i=0;i<110;i++){ h=map(ro+rd*t); if(h.x<.0012*t) break; t+=h.x*.85; if(t>12.) { h.y=-1.; break; } }
+  vec3 col=vec3(.937,.902,.839);
+  if(h.y>=0.){
+    vec3 p=ro+rd*t, n=nor(p);
+    vec3 base = h.y<.5?BODY : h.y<1.5?HORN : h.y<2.5?MOUTH : h.y<3.5?vec3(1.) : vec3(.90,.86,.79);
+    if(h.y>2.5&&h.y<3.5){ vec2 pc=p.xy-vec2(sign(p.x)*.30,.13);
+      if(length(pc)<.085) base=vec3(.07,.04,.06); }
+    if(h.y<.5 && p.z>.42){                      // 성난 눈썹
+      vec2 q2=vec2(abs(p.x)-.34, p.y-.40);
+      float sg = p.x>0. ? -1. : 1.;
+      vec2 rr2=vec2(q2.x*.92 + sg*q2.y*.39, -sg*q2.x*.39 + q2.y*.92);
+      if(abs(rr2.x)<.235 && abs(rr2.y)<.052) base=vec3(.11,.03,.04); }
+    if(h.y>1.5&&h.y<2.5){                       // 송곳니
+      float ty=p.y+.205, fx=fract((p.x+.42)*4.2);
+      if(ty>0. && ty<.115 && abs(fx-.5)<.21) base=vec3(1.,.98,.93);
+      float by=-.50-p.y;
+      if(by>0. && by<.085 && abs(fract((p.x+.30)*3.4)-.5)<.19) base=vec3(1.,.98,.93); }
+    if(h.y>3.5){ base=vec3(.86,.81,.72); n=vec3(0,1,0); }
+    vec3 L=normalize(vec3(-.55,.85,.62));
+    float dif=clamp(dot(n,L),0.,1.);
+    float s=sha(p+n*.02,L);
+    float o=ao(p,n);
+    float sky=clamp(.5+.5*n.y,0.,1.);
+    float rim=pow(clamp(1.+dot(n,rd),0.,1.),3.);
+    vec3 lin = base*(vec3(1.06,.98,.86)*dif*s*1.05 + vec3(.40,.45,.58)*sky*o*.55 + vec3(.26)*o);
+    lin += rim*.26*vec3(1.,.93,.84)*o;
+    float spe=pow(clamp(dot(reflect(-L,n),-rd),0.,1.),22.)*.12*s;
+    col=lin+spe;
+    col=mix(col, vec3(.937,.902,.839), 1.-exp(-.0035*t*t*t));
+  }
+  col=pow(clamp(col,0.,1.), vec3(.4545));
+  O=vec4(col,1.);
+}`;
+(function(){
+  const cv=document.getElementById('a3d'); const gl=cv.getContext('webgl2',{antialias:true});
+  if(!gl){ cv.outerHTML='<div style="padding:20px;color:#a79fc0">이 브라우저는 WebGL2를 지원하지 않습니다.</div>'; return; }
+  const sh=(t,s)=>{const o=gl.createShader(t);gl.shaderSource(o,s);gl.compileShader(o);
+    if(!gl.getShaderParameter(o,gl.COMPILE_STATUS))console.error(gl.getShaderInfoLog(o));return o;};
+  const pr=gl.createProgram();
+  gl.attachShader(pr,sh(gl.VERTEX_SHADER,`#version 300 es
+    in vec2 p; void main(){ gl_Position=vec4(p,0,1); }`));
+  gl.attachShader(pr,sh(gl.FRAGMENT_SHADER,FS)); gl.linkProgram(pr); gl.useProgram(pr);
+  const b=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,b);
+  gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
+  const lp=gl.getAttribLocation(pr,'p'); gl.enableVertexAttribArray(lp); gl.vertexAttribPointer(lp,2,gl.FLOAT,false,0,0);
+  const uR=gl.getUniformLocation(pr,'iR'), uT=gl.getUniformLocation(pr,'iT');
+  function fit(){ const d=Math.min(2,devicePixelRatio||1);
+    cv.width=Math.round(cv.clientWidth*d); cv.height=Math.round(cv.clientHeight*d);
+    gl.viewport(0,0,cv.width,cv.height); }
+  addEventListener('resize',fit); fit();
+  (function f(ms){ gl.uniform2f(uR,cv.width,cv.height); gl.uniform1f(uT,ms/1000);
+    gl.drawArrays(gl.TRIANGLES,0,3); requestAnimationFrame(f); })(0);
+})();
+
+/* 공통: 야차 벡터 원화 */
+const K='#1b1b1b', ST=`stroke="${K}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"`;
+const EYE=(x,y,r,p)=>`<circle cx="${x}" cy="${y}" r="${r}" fill="#fff" stroke="${K}" stroke-width="1.8"/><circle cx="${x}" cy="${y}" r="${p}" fill="${K}"/>`;
+const ANGER=`<g ${ST}>
+  <path d="M27 36 L16 10 L40 28Z" fill="#fff4c9"/><path d="M73 36 L84 10 L60 28Z" fill="#fff4c9"/>
+  <path d="M15 64 C15 40 30 28 50 28 C70 28 85 40 85 64 C85 82 68 91 50 91 C32 91 15 82 15 64Z" fill="#ff5a4a"/></g>
+  ${EYE(37,58,7.5,3.6)}${EYE(63,58,7.5,3.6)}
+  <path d="M25 46 L46 55 M75 46 L54 55" stroke="${K}" stroke-width="5" stroke-linecap="round"/>
+  <path d="M29 74 Q50 66 71 74 L66 85 L60 77 L54 87 L50 78 L46 87 L40 77 L34 85Z" fill="#2a0b10" ${ST}/>
+  <path d="M38 73 L41 80 L44 72Z M56 72 L59 80 L62 73Z" fill="#fff"/>`;
+
+/* ══ C. 플랫 그래픽 ══ */
+document.getElementById('cart').innerHTML = `<svg viewBox="0 0 100 100">${ANGER}</svg>`;
+
+/* ══ B. 픽셀 아트 ══ */
+(function(){
+  const P = { '.':null, R:'#e8402f', r:'#b52a1e', D:'#5e1410', W:'#fff8f0', K:'#14080a',
+              C:'#ffeeb8', c:'#d9c184', S:'#2a1a1e' };
+  const SPR = [
+    '....C..................C....',
+    '...CC..................CC...',
+    '...Cc..................cC...',
+    '..CCc..................cCC..',
+    '..CCc..................cCC..',
+    '.....RRRRRRRRRRRRRRRRRR.....',
+    '...RRRRRRRRRRRRRRRRRRRRRR...',
+    '..RRRRRRRRRRRRRRRRRRRRRRRR..',
+    '.RRRRRRRRRRRRRRRRRRRRRRRRRR.',
+    'RRRRRRRRRRRRRRRRRRRRRRRRRRRR',
+    'RRRKKKRRRRRRRRRRRRRRKKKRRRRR',
+    'RRKKKRRRRRRRRRRRRRRRRKKKRRRR',
+    'RRKWWKRRRRRRRRRRRRRKWWKRRRRR',
+    'RRKWKWKRRRRRRRRRRRKWKWKRRRRR',
+    'RRKKWKKRRRRRRRRRRRKKWKKRRRRR',
+    'RRRRRRRRRRRRRRRRRRRRRRRRRRRR',
+    'RRrDDDDDDDDDDDDDDDDDDDDDrRRR',
+    'RRDDWDDWDDWDDWDDWDDWDDWDDDRR',
+    'RRDDDDDDDDDDDDDDDDDDDDDDDDRR',
+    'RRrDDDDDDDDDDDDDDDDDDDDDrRRR',
+    '.RRRRRRRRRRRRRRRRRRRRRRRRRR.',
+    '..RRRRRRRRRRRRRRRRRRRRRRRR..',
+    '...RRRRRRRRRRRRRRRRRRRRRR...',
+    '.....RRRRRRRRRRRRRRRRRR.....',
+    '........SSSSSSSSSSSS........'
+  ];
+  const cv=document.getElementById('bpx'), c=cv.getContext('2d');
+  const W=cv.width, H=cv.height, px=4;
+  function frame(t){
+    c.clearRect(0,0,W,H);
+    c.fillStyle='#1b2130'; c.fillRect(0,0,W,H);
+    c.fillStyle='#2a3348'; for(let y=0;y<H;y+=8) c.fillRect(0,y,W,1);
+    c.fillStyle='#39465e'; c.fillRect(0,96,W,32);
+    c.fillStyle='#4a5a76'; c.fillRect(0,96,W,3);
+    c.fillStyle='#223047'; c.fillRect(44,100,72,20);
+    c.fillStyle='#3f7fb5'; c.fillRect(46,110,68,8);
+    const bob = Math.floor(Math.sin(t/180)*1.5)*px;
+    const ox = Math.round((W - SPR[0].length*px)/2), oy = 22 + bob;
+    SPR.forEach((row,y)=>[...row].forEach((ch,x)=>{
+      const col=P[ch]; if(!col) return;
+      c.fillStyle=col; c.fillRect(ox+x*px, oy+y*px, px, px);
+    }));
+    requestAnimationFrame(frame);
+  }
+  frame(0);
+})();
+
+/* ══ D. 리소그라프 ══ */
+(function(){
+  const cv=document.getElementById('driso'), c=cv.getContext('2d');
+  const img=new Image();
+  img.onload=()=>{
+    const N=300, off=document.createElement('canvas'); off.width=off.height=N;
+    const o=off.getContext('2d'); o.drawImage(img,24,24,252,252);
+    const d=o.getImageData(0,0,N,N).data;
+    c.clearRect(0,0,N,N);
+    const INKS=[{col:'#ff3d64',ang:0.26,dx:0,dy:0,ch:1},{col:'#2f6fd0',ang:1.31,dx:2.5,dy:2.5,ch:0}];
+    const step=5;
+    INKS.forEach(ink=>{
+      c.save(); c.globalCompositeOperation='multiply'; c.fillStyle=ink.col;
+      c.translate(ink.dx,ink.dy);
+      for(let gy=-N;gy<N*2;gy+=step) for(let gx=-N;gx<N*2;gx+=step){
+        const rx=Math.cos(ink.ang)*gx - Math.sin(ink.ang)*gy;
+        const ry=Math.sin(ink.ang)*gx + Math.cos(ink.ang)*gy;
+        const X=Math.round(rx), Y=Math.round(ry);
+        if(X<0||Y<0||X>=N||Y>=N) continue;
+        const i=(Y*N+X)*4, a=d[i+3]/255;
+        if(a<.25) continue;
+        const v = 1 - d[i + ink.ch] / 255;
+        const amt = Math.min(1, v * 1.05);
+        const r = amt*step*.72;
+        if(r<.35) continue;
+        c.beginPath(); c.arc(X,Y,r,0,7); c.fill();
+      }
+      c.restore();
+    });
+  };
+  img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 100 100">${ANGER}</svg>`);
+})();
+</script></body></html>

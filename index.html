@@ -1,0 +1,913 @@
+<title>스푸크메이트</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;700;900&display=swap">
+<style>
+/* 레이아웃: 세로 한 줄기. 요괴 고르기 → 펫캠 감시 → 품삯 정산.
+   펫캠은 2D 부엌 배경 / WebGL 요괴 / 2D 조리대·HUD 세 겹을 겹쳐 만든다. */
+:root{
+  --bg:#141118; --panel:#1e1a26; --panel2:#272230; --line:#3b3444;
+  --fg:#f3f0f8; --dim:#9b93ab;
+  --red:#ff5a4a; --blue:#55b4e8; --gold:#ffc83d; --green:#5fe0a0;
+  --yc:#ff5a4a;
+  --display:'Black Han Sans','Apple SD Gothic Neo',sans-serif;
+  --body:'Noto Sans KR','Apple SD Gothic Neo',system-ui,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.6 var(--body);
+  word-break:keep-all;overflow-wrap:break-word;padding-block:10px 44px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  -webkit-tap-highlight-color:transparent}
+.wrap{max-width:460px;margin:0 auto}
+[hidden]{display:none!important}
+button{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:2px 0 12px}
+.brand{font:11px/1 var(--body);letter-spacing:.3em;color:var(--dim);font-weight:700}
+.chip{border:1px solid var(--line);background:var(--panel);border-radius:99px;padding:5px 12px;font-size:12px;color:var(--fg)}
+.chip b{color:var(--gold)}
+
+.logo{font:46px/1 var(--display);margin:0;letter-spacing:-.01em}
+.sub{font-size:12px;letter-spacing:.26em;color:var(--dim);margin:2px 0 14px;font-weight:700}
+.premise{margin:0 0 16px;color:#cdc6d8;font-size:14px}
+
+/* 요괴 탭 */
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.tab{border:2px solid var(--line);background:var(--panel);border-radius:14px;padding:11px 8px;cursor:pointer;
+  font:20px/1.1 var(--display);transition:border-color .15s,background .15s,color .15s;color:var(--dim)}
+.tab small{display:block;font:700 11px/1.4 var(--body);letter-spacing:.1em;margin-top:3px;opacity:.9}
+.tab.on{border-color:var(--yc);background:color-mix(in srgb,var(--yc) 16%,var(--panel));color:var(--fg)}
+
+/* 미리보기 / 펫캠 공용 무대 */
+.stage{position:relative;aspect-ratio:4/3;border-radius:16px;overflow:hidden;background:#0e0b12;
+  box-shadow:0 0 0 1px var(--line),0 14px 30px rgba(0,0,0,.55)}
+.stage canvas{display:block;position:absolute;inset:0;width:100%;height:100%}
+#char{z-index:2}
+#fg{z-index:3}
+.bubble{position:absolute;z-index:4;left:9px;right:9px;top:8px;font-size:13.5px;line-height:1.4;
+  background:#fbf7ff;color:#1c1626;border-radius:13px;padding:8px 12px;font-weight:500;
+  pointer-events:none;opacity:0;transform:translateY(-6px);transition:opacity .2s,transform .2s;
+  box-shadow:0 6px 16px rgba(0,0,0,.45)}
+.bubble.on{opacity:1;transform:none}
+.bubble::after{content:"";position:absolute;left:30px;bottom:-7px;border:7px solid transparent;border-top-color:#fbf7ff;border-bottom:0}
+.subt{position:absolute;z-index:4;left:50%;transform:translateX(-50%);bottom:31%;white-space:nowrap;
+  font-size:13px;font-weight:700;background:rgba(10,6,16,.9);color:#ffe9b8;border-radius:99px;padding:6px 15px;
+  pointer-events:none;opacity:0;transition:opacity .18s}
+.subt.on{opacity:1}
+
+/* 고르기 화면 카드 */
+.spec{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:13px 15px;margin:10px 0 14px}
+.spec h3{margin:0 0 4px;font:21px/1.2 var(--display);color:var(--yc)}
+.spec p{margin:0;font-size:13.5px;color:#cdc6d8}
+.spec .meta{margin-top:7px;display:flex;gap:6px;flex-wrap:wrap}
+.spec .meta span{font-size:11.5px;font-weight:700;border:1px solid var(--line);border-radius:99px;padding:3px 9px;color:var(--dim)}
+
+.btn{border:0;border-radius:14px;padding:15px;font:22px/1 var(--display);cursor:pointer;width:100%;
+  background:var(--fg);color:#141118;transition:transform .1s}
+.btn:active{transform:translateY(3px)}
+.btn.ghost{background:var(--panel2);color:var(--fg);border:1px solid var(--line)}
+.btn small{display:block;font:400 12px var(--body);opacity:.7;margin-top:3px}
+.rules{margin:14px 0 0;padding:0;list-style:none;display:grid;gap:7px;font-size:13px;color:var(--dim)}
+.rules li{padding-left:16px;position:relative}
+.rules li::before{content:"";position:absolute;left:2px;top:.62em;width:6px;height:6px;border-radius:50%;background:var(--yc)}
+
+/* 플레이 화면 */
+.phead{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;margin-bottom:8px}
+.phead .who{font:21px/1 var(--display);color:var(--yc)}
+.phead .sub2{font-size:11.5px;color:var(--dim)}
+.phead .dish{font:28px/1 var(--display);font-variant-numeric:tabular-nums}
+.phead .dish span{font:11.5px var(--body);color:var(--dim);margin-left:3px}
+.acts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:11px}
+.act{border:0;border-radius:16px;padding:14px 10px 12px;cursor:pointer;font:24px/1 var(--display);
+  position:relative;overflow:hidden;transition:transform .1s,filter .1s}
+.act small{display:block;font:400 11.5px/1.35 var(--body);opacity:.85;margin-top:4px}
+.act.warn{background:linear-gradient(180deg,#ff6e5e,#d93a28);color:#fff;box-shadow:0 5px 0 #8e2415}
+.act.praise{background:linear-gradient(180deg,#6cc2f0,#2f8fd0);color:#07293c;box-shadow:0 5px 0 #1b5c86}
+.act:active{transform:translateY(5px);box-shadow:none}
+.act.cool{filter:grayscale(.55) brightness(.7)}
+.act .cd{position:absolute;left:0;bottom:0;height:3px;background:rgba(255,255,255,.85);width:0}
+.quitrow{margin-top:11px;text-align:center}
+.quitrow button{background:none;border:0;color:var(--dim);font-size:13px;text-decoration:underline;cursor:pointer;padding:6px}
+
+/* 정산 */
+.rhead{text-align:center;display:grid;gap:5px;justify-items:center}
+.rkick{font-size:11.5px;letter-spacing:.2em;font-weight:700;color:#fff;background:var(--yc);border-radius:99px;padding:3px 12px}
+.rtitle{font:30px/1.12 var(--display);margin:2px 0 0}
+.rbody{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:15px;margin:12px 0 10px;display:grid;gap:12px}
+.pay{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.pay div{background:var(--panel2);border-radius:12px;padding:9px 6px;text-align:center;font-size:11.5px;color:var(--dim)}
+.pay b{display:block;font:26px/1 var(--display);color:var(--c);font-variant-numeric:tabular-nums}
+.clips{display:grid;gap:7px}
+.clips .ct{font-size:11px;letter-spacing:.16em;color:var(--dim);font-weight:700}
+.clip{display:grid;grid-template-columns:54px 1fr;gap:10px;align-items:center;font-size:13px;
+  background:var(--panel2);border-radius:10px;padding:7px 10px;border-left:4px solid var(--red)}
+.clip .tc{font-size:11px;color:var(--dim);font-variant-numeric:tabular-nums}
+.quote{margin:0;padding:11px 14px;border-left:4px solid var(--yc);border-radius:0 12px 12px 0;
+  background:color-mix(in srgb,var(--yc) 13%,transparent);font-size:14px}
+.sharebox{background:#100d15;border:1.5px dashed var(--line);border-radius:14px;padding:12px;font-size:13px;
+  white-space:pre-wrap;user-select:all;-webkit-user-select:all;line-height:1.55}
+.ractions{display:grid;gap:8px;grid-template-columns:1fr 1fr;margin-top:10px}
+.ractions .full{grid-column:1/-1}
+.toast{position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);
+  background:var(--fg);color:#141118;padding:9px 17px;border-radius:99px;font-weight:700;font-size:13px;z-index:90}
+@media (max-width:360px){.logo{font-size:38px}.act{font-size:20px}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+</style>
+<div class="wrap">
+  <header class="top">
+    <span class="brand">SPOOKMATE</span>
+    <button class="chip" id="btnWallet" type="button" disabled>지갑 <b id="wallet">0</b></button>
+  </header>
+
+  <section id="pick">
+    <h1 class="logo">스푸크메이트</h1>
+    <p class="sub">동거 요괴 구함</p>
+    <p class="premise">요괴도 월세를 낸다. 한 마리를 데려와 같이 살면 집안일을 한다. 오늘 시킬 일은 설거지. 당신은 집에 없고, 펫캠으로 보고 있다.</p>
+    <div class="tabs" id="tabs"></div>
+    <div class="stage" id="previewSlot"></div>
+    <div class="spec" id="spec"></div>
+    <button class="btn" id="btnGo" type="button">데려오기<small>오늘 시킬 일: 설거지</small></button>
+    <ul class="rules">
+      <li>사고 치기 직전에 전조가 뜬다. 빨간 전조는 주의, 파란 전조는 칭찬으로 막는다.</li>
+      <li>사고 3번이면 그날 일은 끝난다.</li>
+      <li>닦은 그릇 하나에 토큰 하나. 혼내면 의욕이 깎이니 눈치껏.</li>
+    </ul>
+  </section>
+
+  <section id="play" hidden>
+    <div class="phead">
+      <div><div class="who" id="camWho"></div><div class="sub2">펫캠 · 주방</div></div>
+      <div class="dish"><span>닦은 그릇</span> <b id="camDish">0</b><span>개</span></div>
+    </div>
+    <div class="stage" id="camSlot">
+      <canvas id="bgc" width="400" height="300"></canvas>
+      <canvas id="fg" width="400" height="300"></canvas>
+      <div class="bubble" id="bubble"></div>
+      <div class="subt" id="subt"></div>
+    </div>
+    <div class="acts">
+      <button class="act warn" id="btnWarn" type="button">주의<small>하던 짓을 멈춘다 · 의욕 깎임</small><i class="cd" id="cdWarn"></i></button>
+      <button class="act praise" id="btnPraise" type="button">칭찬<small>의욕이 오른다 · 사고는 못 막음</small><i class="cd" id="cdPraise"></i></button>
+    </div>
+    <div class="quitrow"><button id="btnQuit" type="button">오늘은 그만 시키기</button></div>
+  </section>
+
+  <section id="result" hidden>
+    <div class="rhead">
+      <span class="rkick" id="rKick"></span>
+      <h2 class="rtitle" id="rTitle"></h2>
+    </div>
+    <div class="rbody">
+      <div class="pay">
+        <div style="--c:var(--yc)"><b id="payDish">0</b>닦은 그릇</div>
+        <div style="--c:var(--gold)"><b id="payToken">0</b>오늘 품삯</div>
+        <div style="--c:var(--green)"><b id="payTotal">0</b>누적 토큰</div>
+      </div>
+      <div class="clips" id="clips"></div>
+      <p class="quote" id="rQuote"></p>
+      <p style="margin:0;font-size:13px;color:var(--dim)" id="rBest"></p>
+    </div>
+    <div class="sharebox" id="shareBox" tabindex="0"></div>
+    <div class="ractions">
+      <button class="btn full" id="btnCopy" type="button">결과 복사하기</button>
+      <button class="btn ghost" id="btnAgain" type="button">한 번 더</button>
+      <button class="btn ghost" id="btnChange" type="button">요괴 바꾸기</button>
+    </div>
+  </section>
+</div>
+<canvas id="char" width="400" height="300" style="display:none"></canvas>
+<div class="toast" id="toast" hidden></div>
+<script>
+(() => {
+'use strict';
+
+/* ───────── 캐릭터 셰이더: 오이와(0) · 야차(1) ─────────
+   부엌은 2D 레이어가 그리고, 여기서는 캐릭터만 투명 배경에 그린다. */
+const CHAR_FS = `#version 300 es
+precision highp float;
+out vec4 O;
+uniform vec2 iR; uniform float iT; uniform int iChar; uniform int iPose;
+uniform float iAmt;      /* 전조·폭주 세기 0..1 */
+uniform float iMood;     /* 의욕 0..1 — 자세와 빛에 반영 */
+
+/* 오이와 */
+const vec3 PAPER=vec3(.95,.85,.60), PINK=vec3(.055,.045,.07), HAIR=vec3(.05,.045,.07);
+const vec3 ROBE=vec3(.70,.76,.85), SKIN=vec3(.67,.73,.69), WOOD=vec3(.22,.15,.13);
+/* 야차 */
+const vec3 YSKIN=vec3(.88,.20,.13), HORN=vec3(.96,.91,.74), MANE=vec3(.16,.06,.06);
+const vec3 CLOTH=vec3(.92,.60,.16), EYEW=vec3(.96,.94,.88), YINK=vec3(.07,.04,.05);
+
+float smin(float a,float b,float k){float h=clamp(.5+.5*(b-a)/k,0.,1.);return mix(b,a,h)-k*h*(1.-h);}
+float smax(float a,float b,float k){return -smin(-a,-b,k);}
+vec3 rotZ(vec3 p,float a){float c=cos(a),s=sin(a);return vec3(c*p.x-s*p.y,s*p.x+c*p.y,p.z);}
+vec3 rotX(vec3 p,float a){float c=cos(a),s=sin(a);return vec3(p.x,c*p.y-s*p.z,s*p.y+c*p.z);}
+float sdEll(vec3 p,vec3 r){float k0=length(p/r),k1=length(p/(r*r));return k0*(k0-1.)/k1;}
+float sdBox(vec3 p,vec3 b,float rr){vec3 d=abs(p)-b;return length(max(d,0.))+min(max(d.x,max(d.y,d.z)),0.)-rr;}
+float sdCap(vec3 p,vec3 a,vec3 b,float r){vec3 pa=p-a,ba=b-a;float h=clamp(dot(pa,ba)/dot(ba,ba),0.,1.);return length(pa-ba*h)-r;}
+float sdCone(vec3 p,vec3 a,vec3 b,float r1,float r2){
+  vec3 ba=b-a;float l2=dot(ba,ba),rr=r1-r2,a2=l2-rr*rr,il2=1./l2;
+  vec3 pa=p-a;float y=dot(pa,ba),z=y-l2;vec3 w=pa*l2-ba*y;float x2=dot(w,w),y2=y*y*l2,z2=z*z*l2;
+  float k=sign(rr)*rr*rr*x2;
+  if(sign(z)*a2*z2>k)return sqrt(x2+z2)*il2-r2;
+  if(sign(y)*a2*y2<k)return sqrt(x2+y2)*il2-r1;
+  return (sqrt(x2*a2*il2)+y*rr)*il2-r1;}
+
+float gSway,gScrub,gAmt,gDroop;
+
+/* ══ 오이와 ══ */
+vec2 mapOiwa(vec3 p){
+  vec3 q=p;
+  float tilt=gSway*.075+gDroop*.05;
+  q.y-=sin(iT*1.05)*.022;
+  q+=vec3(sin(iT*31.)*.007,cos(iT*27.)*.006,0.)*gAmt;
+  q.xy=mat2(cos(tilt),-sin(tilt),sin(tilt),cos(tilt))*q.xy;
+  q.y+=gDroop*.05;
+
+  vec3 LC=vec3(0.,.95,0.), l=q-LC;
+  float lan=sdEll(l,vec3(.58,.54,.58));
+  lan=max(lan,abs(l.y)-.345)-.035;
+  vec2 r=vec2(lan,0.);
+  float capT=max(sdEll(q-vec3(0.,1.325,0.),vec3(.21,.09,.21)),abs(q.y-1.325)-.045);
+  float capB=max(sdEll(q-vec3(0.,.585,0.),vec3(.25,.09,.25)),abs(q.y-.585)-.04);
+  float wood=min(capT,capB);
+  wood=min(wood,sdCap(q,vec3(0.,1.36,0.),vec3(0.,2.4,0.),.016));
+  if(wood<r.x)r=vec2(wood,5.);
+
+  float hb=length(q-vec3(0.,.70,-.12))-1.45;
+  if(hb<.22){
+    float h=sdEll(q-vec3(0.,1.02,-.14),vec3(.74+gAmt*.05,.66+gAmt*.07,.68));
+    h=smin(h,sdCone(q,vec3(gSway*.014,.95,-.16),vec3(gSway*.045,-.16+gAmt*.30,-.26-gAmt*.12),.66,.44+gAmt*.10),.22);
+    h=max(h,-(lan+.02));
+    h=max(h,(.80-abs(atan(q.x,q.z)))*.42);
+    if(h<r.x)r=vec2(h,1.);
+  } else if(hb<r.x) r=vec2(hb,1.);
+
+  float neck=sdCap(q,vec3(0.,.40,0.),vec3(0.,.64,0.),.085);
+  if(neck<r.x)r=vec2(neck,3.);
+
+  float armA=iPose==1? -.30 : (iPose==2? .40 : 0.);
+  float br=sin(iT*1.4)*.012;
+  vec3 oL=vec3(0.),oR=vec3(0.);
+  if(iPose==1){ oL=vec3(.05*gScrub,.035*gScrub,.20*gScrub); oR=-oL; }
+  if(iPose==2){ oL=vec3(.06*gAmt,.16*gAmt,.10*gAmt); oR=vec3(-.06*gAmt,.16*gAmt,.10*gAmt); }
+  vec3 shL=vec3(-.26,.34+br,0.),shR=vec3(.26,.34+br,0.);
+  vec3 elL=vec3(-.40,-.10+armA*.3,.06+armA*.22)+oL, elR=vec3(.40,-.12+armA*.3,.05+armA*.22)+oR;
+  float robe=sdCone(q,vec3(0.,.42,0.),vec3(0.,-.58,0.),.235,.44);
+  robe=max(robe,-(q.y+.46+.10*sin(atan(q.z,q.x)*7.+1.3)));
+  robe=smin(robe,sdCone(q,shL,elL,.165,.125),.07);
+  robe=smin(robe,sdCone(q,shR,elR,.165,.125),.07);
+  if(robe<r.x)r=vec2(robe,2.);
+
+  vec3 hL=vec3(-.33,-.44+armA*.52,.16+armA*.36)+oL*1.9, hR=vec3(.34,-.46+armA*.52,.14+armA*.36)+oR*1.9;
+  float arms=sdCap(q,elL,hL,.052);
+  arms=min(arms,sdCap(q,elR,hR,.052));
+  arms=smin(arms,length(q-hL)-.078,.04);
+  arms=smin(arms,length(q-hR)-.078,.04);
+  if(arms<r.x)r=vec2(arms,3.);
+
+  float legs=sdCap(q,vec3(-.13,-.40,0.),vec3(-.13,-.90,.01),.075);
+  legs=min(legs,sdCap(q,vec3(.13,-.40,0.),vec3(.13,-.90,.01),.075));
+  legs=smin(legs,sdEll(q-vec3(-.13,-.94,.05),vec3(.095,.05,.15)),.04);
+  legs=smin(legs,sdEll(q-vec3( .13,-.94,.05),vec3(.095,.05,.15)),.04);
+  if(legs<r.x)r=vec2(legs,3.);
+  return r;
+}
+
+/* ══ 야차 ══ */
+vec2 mapYacha(vec3 p){
+  vec3 q=rotX(p-vec3(0.,-.55,0.),.09+gAmt*.12)+vec3(0.,-.55,0.);
+  q.y-=gSway*.012-gDroop*.05;
+
+  float body=sdEll(q-vec3(0.,.16,.05),vec3(.46,.31,.35));
+  body=smin(body,sdEll(q-vec3(0.,-.15,.08),vec3(.40,.27,.33)),.18);
+  body=smin(body,length(q-vec3(-.22,.25,.30))-.17,.11);
+  body=smin(body,length(q-vec3( .22,.25,.30))-.17,.11);
+  body=smin(body,length(q-vec3(-.31,.43,-.02))-.21,.14);
+  body=smin(body,length(q-vec3( .31,.43,-.02))-.21,.14);
+  body=smin(body,length(q-vec3(-.52,.34,.02))-.245,.15);
+  body=smin(body,length(q-vec3( .52,.34,.02))-.245,.15);
+  body=smin(body,sdCap(q,vec3(0.,.48,.02),vec3(0.,.70,.03),.215),.12);
+  vec2 r=vec2(body,0.);
+
+  float head=sdEll(q-vec3(0.,.92,.06),vec3(.45,.41,.43));
+  head=smin(head,sdEll(q-vec3(0.,.66,.20),vec3(.37,.21,.35)),.14);
+  head=smin(head,sdEll(q-vec3(0.,1.06,.30),vec3(.41,.10,.21)),.09);
+  head=smin(head,length(q-vec3(-.36,.82,.18))-.15,.12);
+  head=smin(head,length(q-vec3( .36,.82,.18))-.15,.12);
+  float gape=.055+gAmt*.085;
+  head=smax(head,-sdEll(q-vec3(0.,.645,.36),vec3(.285,gape+.08,.26)),.05);
+  if(head<r.x)r=vec2(head,0.);
+
+  float horn=sdCone(q,vec3(-.27,1.16,-.04),vec3(-.40,1.44,-.16),.125,.055);
+  horn=smin(horn,sdCone(q,vec3(-.40,1.44,-.16),vec3(-.44,1.68,-.34),.055,.012),.05);
+  horn=smin(horn,sdCone(q,vec3( .27,1.16,-.04),vec3( .40,1.44,-.16),.125,.055),.02);
+  horn=smin(horn,sdCone(q,vec3( .40,1.44,-.16),vec3( .44,1.68,-.34),.055,.012),.05);
+  for(int i=0;i<5;i++){ float fi=float(i)-2., fx=fi*.105, sc=1.+abs(fi)*.42;
+    horn=min(horn,sdCone(q,vec3(fx,.705,.395),vec3(fx,.705-(gape+.055)*sc,.425),.036*sc,.006));
+    if(i<4){ float gx=(float(i)-1.5)*.115, gs=1.+abs(float(i)-1.5)*.40;
+      horn=min(horn,sdCone(q,vec3(gx,.585,.395),vec3(gx,.585+(gape+.04)*gs,.425),.030*gs,.006)); } }
+  if(horn<r.x)r=vec2(horn,1.);
+
+  float mb=length(q-vec3(0.,1.10,-.22))-1.15;
+  if(mb<.14){
+    float m=1e9;
+    for(int i=0;i<9;i++){ float a=(float(i)/8.-.5)*2.3;
+      vec3 b=vec3(sin(a)*.34,1.10-abs(a)*.12,-.18-cos(a)*.28);
+      vec3 t=b+vec3(sin(a)*.08,.34+sin(float(i)*1.7+gSway*.6)*.11,-.42-cos(a)*.18);
+      m=smin(m,sdCone(q,b,t,.125,.014),.10); }
+    if(m<r.x)r=vec2(m,2.);
+  } else if(mb<r.x) r=vec2(mb,2.);
+
+  float ay=iPose==1? -.16+gScrub*.10 : (iPose==2? .74 : 0.);
+  float az=iPose==1?  .30+gScrub*.22 : (iPose==2? -.18 : 0.);
+  vec3 sL=vec3(-.52,.34,.02),sR=vec3(.52,.34,.02);
+  vec3 eL=vec3(-.80,-.02+ay*.45,.08+az*.5),eR=vec3(.80,-.04+ay*.45,.06+az*.5);
+  vec3 fL=vec3(-.72,-.44+ay,.30+az),fR=vec3(.73,-.46+ay,.28+az);
+  if(iPose==1){ fL.z+=gScrub*.10; fR.z-=gScrub*.10; }
+  float arm=sdCone(q,sL,eL,.205,.165);
+  arm=min(arm,sdCone(q,sR,eR,.205,.165));
+  arm=smin(arm,sdCone(q,eL,fL,.165,.175),.06);
+  arm=smin(arm,sdCone(q,eR,fR,.165,.175),.06);
+  arm=smin(arm,sdEll(q-fL,vec3(.21,.19,.20)),.05);
+  arm=smin(arm,sdEll(q-fR,vec3(.21,.19,.20)),.05);
+  if(arm<r.x)r=vec2(arm,0.);
+
+  float cloth=sdEll(q-vec3(0.,-.36,.02),vec3(.475,.205,.44));
+  cloth=min(cloth,sdBox(q-vec3(0.,-.60,.345),vec3(.215,.175,.015),.035));
+  cloth=min(cloth,sdBox(q-vec3(0.,-.60,-.295),vec3(.215,.175,.015),.035));
+  cloth=min(cloth,sdEll(q-vec3(0.,-.22,.02),vec3(.495,.05,.455)));
+  if(cloth<r.x)r=vec2(cloth,3.);
+
+  float eye=min(length(q-vec3(-.20,.98,.37))-.135,length(q-vec3(.20,.98,.37))-.135);
+  if(eye<r.x)r=vec2(eye,4.);
+
+  float leg=sdCone(q,vec3(-.25,-.36,.02),vec3(-.31,-.72,.03),.225,.16);
+  leg=min(leg,sdCone(q,vec3(.25,-.36,.02),vec3(.31,-.72,.03),.225,.16));
+  leg=smin(leg,sdCone(q,vec3(-.31,-.72,.03),vec3(-.34,-.93,-.01),.16,.125),.05);
+  leg=smin(leg,sdCone(q,vec3( .31,-.72,.03),vec3( .34,-.93,-.01),.16,.125),.05);
+  leg=smin(leg,sdEll(q-vec3(-.35,-.96,.11),vec3(.155,.07,.25)),.05);
+  leg=smin(leg,sdEll(q-vec3( .35,-.96,.11),vec3(.155,.07,.25)),.05);
+  if(leg<r.x)r=vec2(leg,0.);
+  return r;
+}
+
+vec2 map(vec3 p){ return iChar==0? mapOiwa(p) : mapYacha(p); }
+vec3 nor(vec3 p){vec2 e=vec2(.0016,0);
+  return normalize(vec3(map(p+e.xyy).x-map(p-e.xyy).x,map(p+e.yxy).x-map(p-e.yxy).x,map(p+e.yyx).x-map(p-e.yyx).x));}
+float sha(vec3 ro,vec3 rd){float s=1.,t=.05;
+  for(int i=0;i<24;i++){float h=map(ro+rd*t).x;if(h<.002)return 0.;s=min(s,9.*h/t);t+=clamp(h,.04,.30);if(t>3.6)break;}
+  return clamp(s,0.,1.);}
+float ao(vec3 p,vec3 n){float o=0.,w=1.;
+  for(int i=0;i<4;i++){float h=.025+.13*float(i);o+=(h-map(p+n*h).x)*w;w*=.72;}
+  return clamp(1.-1.5*o,0.,1.);}
+float ell2(vec2 p,vec2 c,vec2 r,float s){return 1.-smoothstep(-s,s,length((p-c)/r)-1.);}
+float bar2(vec2 p,vec2 c,vec2 r,float a){
+  vec2 q=p-c;q=vec2(q.x*cos(a)-q.y*sin(a),q.x*sin(a)+q.y*cos(a));
+  vec2 d=abs(q)-r;return 1.-smoothstep(-.014,.014,min(max(d.x,d.y),0.)+length(max(d,0.)));}
+
+void main(){
+  vec2 uv=(gl_FragCoord.xy*2.-iR)/iR.y;
+  gSway=sin(iT*.9);
+  gScrub=iPose==1? sin(iT*3.4) : 0.;
+  gAmt=iAmt;
+  gDroop=(1.-iMood)*.5;
+
+  float cd = iChar==0? 3.62 : 4.05;
+  float cy = iChar==0? .30 : .10;
+  vec3 ro=vec3(0.,.38+cy*.4,cd);
+  vec3 ww=normalize(vec3(0.,cy,0.)-ro),uu=normalize(cross(vec3(0,1,0),ww)),vv=cross(ww,uu);
+  vec3 rd=normalize(uv.x*uu+uv.y*vv+2.25*ww);
+  float t=.1;vec2 h=vec2(-1.);
+  for(int i=0;i<84;i++){h=map(ro+rd*t);if(h.x<.0018*t)break;t+=h.x*.82;if(t>7.){h.y=-1.;break;}}
+  if(h.y<0.){ O=vec4(0.); return; }
+
+  vec3 p=ro+rd*t,n=nor(p),base;
+  if(iChar==0){
+    if(h.y<.5){
+      vec3 l=p-vec3(0.,.95,0.);
+      float rib=abs(fract(l.y*7.5)-.5)*2.;
+      base=mix(PAPER*.58,PAPER,smoothstep(.06,.40,rib));
+      float u=atan(l.x,l.z); vec2 f=vec2(u*.50,l.y);
+      if(abs(u)<1.25){
+        base=mix(base,PINK,max(ell2(f,vec2(-.20,-.01),vec2(.165,.125),.022),ell2(f,vec2(.19,.10),vec2(.105,.080),.022)));
+        base=mix(base,vec3(.86,.84,.78),max(ell2(f,vec2(-.20,.025),vec2(.120,.070),.016),ell2(f,vec2(.19,.115),vec2(.072,.050),.016)));
+        base=mix(base,vec3(.05,.04,.07),max(ell2(f,vec2(-.195,.005),vec2(.050,.050),.012),ell2(f,vec2(.188,.098),vec2(.038,.038),.012)));
+        base=mix(base,PINK,bar2(f,vec2(-.210,.100),vec2(.150,.030),-.30));
+        base=mix(base,PINK,bar2(f,vec2( .200,.225),vec2(.130,.028), .44));
+        base=mix(base,PAPER*.93,ell2(f,vec2(-.205,.145),vec2(.205,.125),.018));
+        base=mix(base,PINK,bar2(f,vec2(-.205,.030),vec2(.150,.016),-.07));
+        base=mix(base,PINK,ell2(f,vec2(-.01,-.210),vec2(.185,.044+gAmt*.055),.016));
+        base=mix(base,PINK,bar2(f,vec2(-.185,-.160),vec2(.060,.015),-.62));
+        base=mix(base,PINK,bar2(f,vec2( .165,-.160),vec2(.060,.015), .62));
+        base=mix(base,vec3(.52,.60,.72),bar2(f,vec2(-.205,-.13),vec2(.030,.155),.04)*gAmt*.85);
+        base=mix(base,vec3(.52,.60,.72),bar2(f,vec2( .190,-.06),vec2(.024,.125),-.04)*gAmt*.7);
+        base=mix(base,PINK*1.5,bar2(f,vec2(-.02,-.085),vec2(.014,.050),.08));
+      }
+    }
+    else if(h.y<1.5) base=HAIR;
+    else if(h.y<2.5){ base=ROBE*(.86+.14*sin(atan(p.z,p.x)*9.));
+      if(abs(p.y-.02)<.055) base=vec3(.42,.36,.44);
+      base*=.90+.10*smoothstep(-.6,.4,p.y); }
+    else if(h.y<3.5) base=SKIN;
+    else base=WOOD;
+  } else {
+    if(h.y<.5){
+      base=YSKIN;
+      vec3 d=p-vec3(0.,.92,.06);
+      if(d.z>.10){ vec2 f=vec2(d.x,d.y);
+        base=mix(base,YINK,bar2(f,vec2(-.23,.16),vec2(.175,.032),-.40));
+        base=mix(base,YINK,bar2(f,vec2( .23,.16),vec2(.175,.032), .40));
+        base=mix(base,YINK,bar2(f,vec2(-.055,.11),vec2(.016,.075),-.16));
+        base=mix(base,YINK,bar2(f,vec2( .055,.11),vec2(.016,.075), .16));
+        base=mix(base,YSKIN*.72,bar2(f,vec2(0.,-.14),vec2(.030,.065),0.)); }
+      float gp=.055+gAmt*.085;
+      if(length((p-vec3(0.,.645,.36))/vec3(.30,gp+.10,.29))<1.06) base=vec3(.26,.035,.05);
+      base*=.88+.12*smoothstep(-.5,.6,p.y);
+    }
+    else if(h.y<1.5) base=HORN;
+    else if(h.y<2.5) base=MANE;
+    else if(h.y<3.5){ base=CLOTH;
+      float st=sin(p.x*7.5+p.y*2.4+sin(p.y*5.)*.8)*.5+.5;
+      base=mix(base,vec3(.26,.12,.05),smoothstep(.40,.56,st));
+      if(abs(p.y+.22)<.058) base=vec3(.44,.16,.12); }
+    else { base=EYEW;
+      vec3 d=p-vec3(sign(p.x)*.20,.98,.37);
+      if(length(d.xy-vec2(0.,-.012))<.062) base=vec3(.95,.78,.10);
+      if(length(d.xy-vec2(0.,-.012))<.030) base=YINK; }
+  }
+
+  vec3 L=normalize(vec3(-.48,.80,.62));
+  float dif=clamp(dot(n,L),0.,1.), s=sha(p+n*.025,L), o=ao(p,n);
+  float sky=clamp(.5+.5*n.y,0.,1.);
+  float rim=pow(clamp(1.+dot(n,rd),0.,1.),3.);
+  vec3 lin=base*(vec3(1.08,1.00,.86)*dif*s*1.06 + vec3(.36,.38,.50)*sky*o*.52 + vec3(.22)*o);
+  lin+=rim*.24*vec3(1.,.88,.76)*o;
+  if(iChar==0 && h.y<.5){
+    float gl=smoothstep(.42,-.30,p.y-.95);
+    float flick=.84+.16*sin(iT*17.)*sin(iT*7.3);
+    lin+=base*vec3(1.30,.92,.40)*(.16+gl*.30)*flick*(1.-gAmt*.55);
+  }
+  if(iChar==1) lin+=YSKIN*gAmt*.18*clamp(1.-p.y,0.,1.)*o;
+  lin+=rim*gAmt*.18*(iChar==0? vec3(.5,.7,1.) : vec3(1.,.35,.2));
+  O=vec4(pow(clamp(lin,0.,1.),vec3(.4545)),1.);
+}`;
+
+/* ───────── 공통 도구 · WebGL 캐릭터 렌더러 ───────── */
+const $ = s => document.querySelector(s);
+const clamp = (v,a,b) => Math.max(a,Math.min(b,v));
+const rnd = (a,b) => a + Math.random()*(b-a);
+const pick = a => a[Math.floor(Math.random()*a.length)];
+
+const GL = {
+  cv:null, gl:null, u:{}, ok:false, dpr:1,
+  init(){
+    const cv = $('#char'); this.cv = cv;
+    const gl = cv.getContext('webgl2',{antialias:false,alpha:true,premultipliedAlpha:true});
+    if(!gl){ this.ok=false; return false; }
+    this.gl = gl;
+    const sh=(t,s)=>{const o=gl.createShader(t);gl.shaderSource(o,s);gl.compileShader(o);
+      if(!gl.getShaderParameter(o,gl.COMPILE_STATUS)){console.error(gl.getShaderInfoLog(o));return null;}return o;};
+    const vs=sh(gl.VERTEX_SHADER,`#version 300 es\nin vec2 p;void main(){gl_Position=vec4(p,0,1);}`);
+    const fs=sh(gl.FRAGMENT_SHADER,CHAR_FS);
+    if(!vs||!fs){ this.ok=false; return false; }
+    const pr=gl.createProgram(); gl.attachShader(pr,vs); gl.attachShader(pr,fs); gl.linkProgram(pr);
+    if(!gl.getProgramParameter(pr,gl.LINK_STATUS)){ console.error(gl.getProgramInfoLog(pr)); this.ok=false; return false; }
+    gl.useProgram(pr);
+    const b=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,b);
+    gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
+    const lp=gl.getAttribLocation(pr,'p'); gl.enableVertexAttribArray(lp); gl.vertexAttribPointer(lp,2,gl.FLOAT,false,0,0);
+    ['iR','iT','iChar','iPose','iAmt','iMood'].forEach(k=>this.u[k]=gl.getUniformLocation(pr,k));
+    gl.clearColor(0,0,0,0);
+    this.ok=true; return true;
+  },
+  fit(){
+    if(!this.ok) return;
+    const cv=this.cv, w=cv.clientWidth||360;
+    const d=window.__dpr||Math.min(1.5, window.devicePixelRatio||1);
+    const W=Math.round(w*d), H=Math.round(w*.75*d);
+    if(cv.width!==W||cv.height!==H){ cv.width=W; cv.height=H; this.gl.viewport(0,0,W,H); }
+  },
+  render(t,ch,pose,amt,mood){
+    if(!this.ok) return;
+    const gl=this.gl;
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.uniform2f(this.u.iR,this.cv.width,this.cv.height);
+    gl.uniform1f(this.u.iT,t);
+    gl.uniform1i(this.u.iChar,ch);
+    gl.uniform1i(this.u.iPose,pose);
+    gl.uniform1f(this.u.iAmt,amt);
+    gl.uniform1f(this.u.iMood,mood);
+    gl.drawArrays(gl.TRIANGLES,0,3);
+  }
+};
+
+/* ───────── 출연진: 성격이 곧 규칙 ───────── */
+const ROSTER = ['oiwa','yacha'];
+const Y = {
+  oiwa:  { i:0, emo:'우울', name:'오이와', c:'#7fa8d8', sq:'🔵',
+           house:'불 꺼져 가는 초롱', tag:'달래야 움직이는 놈',
+           note:'느리다. 가만히 두면 손이 멈춘다. 파란 전조가 많아 주로 칭찬으로 막는다. 혼내면 두 배로 가라앉고, 바닥까지 가면 아예 꺼진다.' },
+  yacha: { i:1, emo:'분노', name:'야차', c:'#ff5a4a',
+           house:'불난 천막', tag:'혼내야 멈추는 놈',
+           note:'빠르다. 대신 과격해서 그릇을 깬다. 빨간 전조가 많아 주로 혼내서 막는다. 혼낼수록 더 열받아 다음 사고가 빨리 온다.' }
+};
+const SPEC = {
+  oiwa:  { wash:5.0, idle:[9,15], down:[5.5,10], warn:[7,11.5], warnDur:2.05, red:.2,
+           scoldMood:-22, praiseMood:15, rage:1 },
+  yacha: { wash:3.0, idle:[6,10],  down:[10,16], warn:[6.5,10.5], warnDur:1.7,  red:.8,
+           scoldMood:-11, praiseMood:10, rage:.82 }
+};
+const LINE = {
+  oiwa: {
+    work:['이 그릇 닦아서 뭐 하나.','물이 미지근해졌네.','불이 자꾸 작아져.'],
+    idle:['손이 멈췄는데 언제부터인지 모르겠어.','잠깐만. 금방 다시 할게.','물 흐르는 소리만 듣고 있었어.'],
+    down:['오늘은 좀 많이 무겁다.','미안해. 느려서.','아무것도 하기 싫어졌어.'],
+    warnR:['자꾸 안 닦여…!','이것도 내 탓이야.','왜 나한테만 이래.'],
+    warnB:['불이 꺼질 것 같아…','여기 물이 자꾸 차오르는데.','참으려고 했는데.'],
+    accR:['놓쳤어. 미안해.','손에서 미끄러졌어.','역시 나는 안 되나 봐.'],
+    accB:['싱크대가 넘쳤어. 전부 내 눈물이야.','막을 수가 없었어.','미안해. 정말 미안해.'],
+    scold:['…','그렇게 말할 줄 알았어.','더 꺼질 것 같은데.'],
+    praise:['정말? 그렇게 생각해?','조금 밝아졌어.','그 말 오래 기억할게.'],
+    spam:['그 말 아까도 했잖아.','진심이면 한 번이면 돼.'],
+    strike:['오늘은 여기까지야…'],
+    good:['이만큼 했는데 왜 눈물이 나지.'], mid:['그래도 몇 개는 닦았어.'], bad:['역시 나는 설거지에 안 맞아.']
+  },
+  yacha: {
+    work:['이 기름때가 나한테 왜 이래.','물 온도가 나를 시험하네.','그릇 주제에.'],
+    idle:['잠깐. 이거 누구 밥그릇이야?','손목 나갔다. 쉰다.','수세미가 먼저 지쳤어.'],
+    down:['…하기 싫다.','왜 내가 이걸 하고 있지.','월세만 아니었어도.'],
+    warnR:['이 자국 안 지워지네?!','손에 힘이 들어간다…','그릇이 날 비웃어.'],
+    warnB:['…됐다. 안 해.','다 의미 없어진다.','그만두고 싶어지는데.'],
+    accR:['그릇이 먼저 깨졌어.','원래 금 가 있었어.','손이 한 거지 내가 한 게 아니야.'],
+    accB:['주저앉았다. 물이 넘친다.','됐어, 내가 왜.','바닥 닦는 건 네 몫이야.'],
+    scold:['알았다고!','지금 하려고 했어.','…치사하게.'],
+    praise:['흥. 당연하지.','뭐야 갑자기.','…한 번 더 해봐.'],
+    spam:['그만 좀 해.','영혼 없는 거 티 난다.'],
+    strike:['안 해. 파업이야.'],
+    good:['이 정도면 내가 집주인 아니냐.'], mid:['딱 받은 만큼만 했다.'], bad:['처음부터 설거지는 사람 할 일이었어.']
+  }
+};
+const MYVOICE = { warn:['야!','그만!','손 내려!','멈춰!'], praise:['잘한다','그래 그렇게','좋아, 계속','최고야'] };
+
+/* ───────── 저장 · 소리 · 상태기계 ───────── */
+const LS='spookmate.3d.v1';
+function loadSave(){try{const d=JSON.parse(localStorage.getItem(LS)||'null');if(d&&typeof d==='object')return Object.assign({wallet:0,best:{},days:0},d);}catch(e){}return{wallet:0,best:{},days:0};}
+function saveSave(){try{localStorage.setItem(LS,JSON.stringify(SAVE));}catch(e){}}
+let SAVE=loadSave();
+
+const Snd={on:true,ctx:null,
+  wake(){try{if(!this.ctx)this.ctx=new (window.AudioContext||window.webkitAudioContext)();if(this.ctx.state==='suspended')this.ctx.resume();}catch(e){}},
+  t(f,d=.12,ty='triangle',v=.06,sl){if(!this.on||!this.ctx)return;
+    try{const c=this.ctx,o=c.createOscillator(),g=c.createGain();o.type=ty;o.frequency.setValueAtTime(f,c.currentTime);
+      if(sl)o.frequency.exponentialRampToValueAtTime(sl,c.currentTime+d);
+      g.gain.setValueAtTime(v,c.currentTime);g.gain.exponentialRampToValueAtTime(.0001,c.currentTime+d);
+      o.connect(g);g.connect(c.destination);o.start();o.stop(c.currentTime+d);}catch(e){}},
+  ding(){this.t(880,.12);this.t(1320,.18,'sine',.04);},
+  warn(){this.t(220,.14,'square',.05,160);},
+  praise(){this.t(520,.1,'sine',.05,760);},
+  alert(r){this.t(r?440:300,.1,'square',.045);},
+  crash(){this.t(90,.4,'sawtooth',.09,50);this.t(260,.25,'square',.04,70);},
+  splash(){this.t(300,.5,'sine',.06,110);}};
+const buzz=p=>{try{navigator.vibrate&&navigator.vibrate(p);}catch(e){}};
+
+const S={ id:'yacha', spec:null, L:null, on:false,
+  t:0, st:'work', prog:0, dish:0, lives:3, mood:70,
+  warnKind:'R', warnT:0, warnMax:0, stT:0,
+  nextIdle:0, nextDown:0, nextWarn:0, warnMul:1,
+  praiseRun:0, scoldRun:0, cdW:0, cdP:0, strikeNeed:0,
+  shake:0, flash:0, flashCol:'#fff', water:.3, parts:[], clips:[], over:false, sayT:0, amt:0 };
+
+const rampW=()=>clamp(1-S.t/250,.38,1);
+const schedIdle=()=>{S.nextIdle=S.t+rnd(S.spec.idle[0],S.spec.idle[1]);};
+const schedDown=()=>{S.nextDown=S.t+rnd(S.spec.down[0],S.spec.down[1]);};
+const schedWarn=()=>{S.nextWarn=S.t+Math.max(2.4,rnd(S.spec.warn[0],S.spec.warn[1])*S.warnMul*rampW());};
+const warnDur=()=>Math.max(.7,S.spec.warnDur*clamp(1-S.t/420,.6,1)*(.78+S.mood/450));
+const speedMul=()=>S.mood>=60?1:S.mood>=35?.8:S.mood>=15?.58:.4;
+
+let bubT=0,subT=0;
+function say(x){const b=$('#bubble');b.textContent=x;b.classList.add('on');clearTimeout(bubT);bubT=setTimeout(()=>b.classList.remove('on'),2600);}
+function me(x){const s=$('#subt');s.textContent='🔊 나 · '+x;s.classList.add('on');clearTimeout(subT);subT=setTimeout(()=>s.classList.remove('on'),1500);}
+function fx(c,sh){S.flash=1;S.flashCol=c;S.shake=sh||10;}
+function puff(x,y,n,col,spd){for(let i=0;i<n;i++){const a=Math.random()*6.283,v=(spd||120)*(.3+Math.random());
+  S.parts.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-50,g:540,life:.5+Math.random()*.6,m:1.1,
+    col:Array.isArray(col)?col[i%col.length]:col,r:2.5+Math.random()*4});}}
+
+function toClip(k){const m=Math.floor(S.t/60),s=Math.floor(S.t%60);
+  S.clips.push({tc:`19:${String(40+m).padStart(2,'0')}:${String(s).padStart(2,'0')}`,kind:k,txt:k==='R'?'그릇 파손':'싱크대 범람'});}
+
+function enterWarn(){S.st='warn';S.warnKind=Math.random()<S.spec.red?'R':'B';S.warnMax=S.warnT=warnDur();
+  say(pick(S.warnKind==='R'?S.L.warnR:S.L.warnB));Snd.alert(S.warnKind==='R');buzz(25);}
+function accident(k){S.st='acc';S.stT=1.25;S.lives--;S.mood=clamp(S.mood-10,0,100);toClip(k);
+  if(k==='R'){puff(200,214,22,['#f2ead6','#cdbfa0','#fff'],190);fx('#ff4d5e',16);Snd.crash();}
+  else{S.water=1.25;puff(200,206,18,['#9ad4ff','#d8f0ff'],150);fx('#6fc3ff',12);Snd.splash();}
+  say(pick(k==='R'?S.L.accR:S.L.accB));buzz([50,40,90]);}
+function endDay(reason){if(S.over)return;S.over=true;S.on=false;showResult(reason);}
+
+function startDay(id){
+  S.id=id;S.spec=SPEC[id];S.L=LINE[id];
+  S.t=0;S.st='work';S.prog=0;S.dish=0;S.lives=3;S.mood=70;S.warnT=0;S.stT=0;S.warnMul=1;
+  S.praiseRun=0;S.scoldRun=0;S.cdW=0;S.cdP=0;S.shake=0;S.flash=0;S.water=.3;
+  S.parts=[];S.clips=[];S.over=false;S.sayT=3;S.amt=0;
+  schedIdle();schedDown();S.nextWarn=S.t+rnd(3.5,5.5);
+  document.documentElement.style.setProperty('--yc',Y[id].c);
+  $('#camWho').textContent=`${Y[id].name} · ${Y[id].emo}`;
+  $('#camDish').textContent='0';
+  $('#bubble').classList.remove('on');$('#subt').classList.remove('on');
+  $('#pick').hidden=true;$('#result').hidden=true;$('#play').hidden=false;
+  $('#camSlot').appendChild($('#char'));
+  $('#char').style.display='block';
+  Snd.wake();
+  layout(); drawBG($('#bgc').getContext('2d'));
+  S.on=true; say(pick(S.L.work)); scrollTo(0,0);
+}
+
+function step(dt){
+  if(!S.on||S.over) return;
+  S.t+=dt;
+  S.cdW=Math.max(0,S.cdW-dt);S.cdP=Math.max(0,S.cdP-dt);
+  S.shake=Math.max(0,S.shake-dt*36);S.flash=Math.max(0,S.flash-dt*2.6);S.sayT-=dt;
+  for(let i=S.parts.length-1;i>=0;i--){const p=S.parts[i];p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=p.g*dt;p.life-=dt;if(p.life<=0)S.parts.splice(i,1);}
+
+  if(S.st==='acc'){ S.stT-=dt;
+    if(S.stT<=0){ if(S.lives<=0) return endDay('out');
+      S.st='work';S.water=.3;schedWarn();schedIdle();schedDown(); } }
+  else if(S.st==='warn'){ S.warnT-=dt;
+    if(S.warnKind==='B') S.water=clamp(.3+(1-S.warnT/S.warnMax)*.55,.3,.9);
+    if(S.warnT<=0) accident(S.warnKind); }
+  else if(S.st!=='strike'){
+    if(S.st==='work'){ S.prog+=dt/S.spec.wash*speedMul(); if(Math.random()<dt*5) puff(rnd(165,235),206,1,['#ffffff','#dff2ff'],24); }
+    else if(S.st==='down') S.prog+=dt/S.spec.wash*speedMul()*.45;
+    if(S.prog>=1){ S.prog=0;S.dish++;$('#camDish').textContent=S.dish; puff(332,196,7,['#fff6d8','#ffd23f'],90); Snd.ding(); }
+    S.stT-=dt;
+    if((S.st==='idle'||S.st==='down')&&S.stT<=0){S.st='work';schedIdle();schedDown();}
+    if(S.t>=S.nextWarn) enterWarn();
+    else if(S.st==='work'&&S.t>=S.nextIdle){S.st='idle';S.stT=7.5;S.praiseRun=0;S.scoldRun=0;say(pick(S.L.idle));schedIdle();}
+    else if(S.st!=='down'&&S.t>=S.nextDown){S.st='down';S.stT=8.5;S.praiseRun=0;S.scoldRun=0;say(pick(S.L.down));schedDown();}
+    else if(S.sayT<=0&&S.st==='work'){S.sayT=rnd(7,12);say(pick(S.L.work));}
+  }
+  /* 셰이더에 넘길 세기 */
+  const target = S.st==='warn'? (1-S.warnT/S.warnMax) : S.st==='acc'? 1 : S.st==='strike'? .35 : 0;
+  S.amt += (target-S.amt)*Math.min(1,dt*7);
+}
+function glPose(){ return S.st==='warn'||S.st==='acc'? 2 : (S.st==='work'? 1 : 0); }
+
+function doWarn(){
+  if(!S.on||S.over||S.cdW>0)return;
+  S.cdW=1.2;Snd.warn();me(pick(MYVOICE.warn));buzz(18);
+  if(S.st==='warn'){
+    if(S.warnKind==='R'){S.st='work';S.water=.3;S.mood=clamp(S.mood+S.spec.scoldMood*.55,0,100);
+      S.warnMul=Math.max(.45,S.warnMul*S.spec.rage);schedWarn();schedIdle();fx('#7dffb0',5);say(pick(S.L.scold));}
+    else accident('B');
+    return;
+  }
+  if(S.st==='idle'){S.st='work';S.stT=0;S.mood=clamp(S.mood+S.spec.scoldMood,0,100);schedIdle();say(pick(S.L.scold));}
+  else if(S.st==='down'){S.mood=clamp(S.mood+S.spec.scoldMood*1.4,0,100);S.stT+=2;say(pick(S.L.scold));}
+  else{S.scoldRun++;S.mood=clamp(S.mood+S.spec.scoldMood*(.6+S.scoldRun*.3),0,100);say(pick(S.L.scold));}
+  S.warnMul=Math.max(.45,S.warnMul*S.spec.rage);
+  if(S.mood<=0&&S.st!=='strike'){S.st='strike';S.strikeNeed=2;say(pick(S.L.strike));fx('#ff4d5e',8);}
+}
+function doPraise(){
+  if(!S.on||S.over||S.cdP>0)return;
+  S.cdP=1.2;Snd.praise();me(pick(MYVOICE.praise));buzz(12);
+  if(S.st==='warn'){
+    if(S.warnKind==='B'){S.st='work';S.water=.3;S.mood=clamp(S.mood+S.spec.praiseMood*.7,0,100);
+      schedWarn();schedDown();fx('#7dffb0',5);say(pick(S.L.praise));}
+    else accident('R');
+    return;
+  }
+  if(S.st==='strike'){S.strikeNeed--;S.mood=clamp(S.mood+18,0,100);
+    if(S.strikeNeed<=0){S.st='work';S.mood=Math.max(S.mood,30);schedWarn();schedIdle();schedDown();say(pick(S.L.praise));}
+    else say('…한 번만 더 말해줘.');
+    return;}
+  S.praiseRun++;
+  const eff=S.praiseRun>1?Math.pow(.45,S.praiseRun-1):1;
+  if(S.st==='down'){S.mood=clamp(S.mood+S.spec.praiseMood*eff,0,100);if(eff>.4){S.st='work';S.stT=0;schedDown();}say(eff>.4?pick(S.L.praise):pick(S.L.spam));}
+  else if(S.st==='idle'){S.mood=clamp(S.mood+3*eff,0,100);say('…응. 근데 이것 좀만 더.');}
+  else{S.mood=clamp(S.mood+S.spec.praiseMood*.6*eff,0,100);say(eff>.4?pick(S.L.praise):pick(S.L.spam));}
+}
+
+/* ───────── 부엌 2D: 뒤 배경 한 번 · 앞 레이어 매 프레임 ───────── */
+const CW=400, CH=300;
+function rr(c,x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.lineTo(x+w-r,y);c.quadraticCurveTo(x+w,y,x+w,y+r);
+  c.lineTo(x+w,y+h-r);c.quadraticCurveTo(x+w,y+h,x+w-r,y+h);c.lineTo(x+r,y+h);c.quadraticCurveTo(x,y+h,x,y+h-r);
+  c.lineTo(x,y+r);c.quadraticCurveTo(x,y,x+r,y);c.closePath();}
+
+function fitCanvas(cv){
+  const d=window.__dpr||Math.min(2,window.devicePixelRatio||1), w=cv.clientWidth||360;
+  const W=Math.round(w*d), H=Math.round(w*.75*d);
+  if(cv.width!==W||cv.height!==H){cv.width=W;cv.height=H;}
+  const c=cv.getContext('2d'); c.setTransform(W/CW,0,0,W/CW,0,0); return c;
+}
+function layout(){ GL.fit(); fitCanvas($('#bgc')); fitCanvas($('#fg')); }
+
+function drawBG(c){
+  c.clearRect(0,0,CW,CH);
+  const g=c.createLinearGradient(0,0,0,200);
+  g.addColorStop(0,'#2c2a3c'); g.addColorStop(1,'#3e3a52');
+  c.fillStyle=g; c.fillRect(0,0,CW,CH);
+  c.strokeStyle='rgba(255,255,255,.05)'; c.lineWidth=1;
+  for(let x=0;x<CW;x+=34){c.beginPath();c.moveTo(x,0);c.lineTo(x,210);c.stroke();}
+  for(let y=6;y<210;y+=30){c.beginPath();c.moveTo(0,y);c.lineTo(CW,y);c.stroke();}
+  /* 창 — 바깥은 밤 */
+  c.fillStyle='#0d0a1c'; rr(c,22,34,74,56,6); c.fill();
+  c.strokeStyle='#5a5370'; c.lineWidth=4; c.stroke();
+  c.fillStyle='#ffeab4'; c.globalAlpha=.5; c.beginPath(); c.arc(74,54,8,0,7); c.fill(); c.globalAlpha=1;
+  c.fillStyle='#5a5370'; c.fillRect(56,34,4,56); c.fillRect(22,60,74,4);
+  /* 벽시계 */
+  c.fillStyle='#1b1828'; c.beginPath(); c.arc(344,56,20,0,7); c.fill();
+  c.strokeStyle='#5a5370'; c.lineWidth=4; c.stroke();
+  c.strokeStyle='#cfc8e0'; c.lineWidth=2.4; c.lineCap='round';
+  c.beginPath(); c.moveTo(344,56); c.lineTo(344,45); c.lineTo(344,56); c.lineTo(352,60); c.stroke();
+  /* 상부장 */
+  c.fillStyle='#4a4160'; c.fillRect(130,0,190,48);
+  c.fillStyle='#564c6e'; c.fillRect(130,44,190,6);
+  c.strokeStyle='#39314c'; c.lineWidth=2; c.beginPath(); c.moveTo(225,0); c.lineTo(225,44); c.stroke();
+  c.fillStyle='#8e85a8'; c.fillRect(205,20,14,4); c.fillRect(231,20,14,4);
+}
+
+function drawFG(c){
+  c.clearRect(0,0,CW,CH);
+  c.save();
+  if(S.shake>.3) c.translate((Math.random()-.5)*S.shake,(Math.random()-.5)*S.shake);
+
+  /* 조리대 */
+  c.fillStyle='#6f6486'; c.fillRect(-10,185,CW+20,24);
+  c.fillStyle='#857a9e'; c.fillRect(-10,185,CW+20,7);
+  c.fillStyle='#4a3f5e'; c.fillRect(-10,209,CW+20,CH);
+  c.fillStyle='rgba(0,0,0,.28)'; c.fillRect(-10,209,CW+20,5);
+
+  /* 싱크대 */
+  c.fillStyle='#2a2438'; rr(c,112,190,176,52,9); c.fill();
+  const wl=238-S.water*32;
+  c.save(); rr(c,114,192,172,48,8); c.clip();
+  const wg=c.createLinearGradient(0,wl,0,240);
+  wg.addColorStop(0,S.water>1?'#a8ddfa':'#6aa8d6'); wg.addColorStop(1,'#35587e');
+  c.fillStyle=wg; c.fillRect(112,wl,176,56);
+  c.fillStyle='rgba(255,255,255,.3)';
+  for(let i=0;i<6;i++) c.fillRect(122+i*27,wl+1.5+Math.sin(S.t*3+i)*1.6,15,2);
+  c.restore();
+  if(S.water>1){c.fillStyle='rgba(120,190,255,.4)';c.fillRect(92,240,216,10);c.fillRect(60,248,280,6);}
+  /* 수도꼭지 */
+  c.strokeStyle='#cdc6dc'; c.lineWidth=6; c.lineCap='round';
+  c.beginPath(); c.moveTo(272,162); c.lineTo(272,180); c.quadraticCurveTo(272,187,262,187); c.stroke();
+  c.fillStyle='#cdc6dc'; rr(c,266,154,13,11,4); c.fill();
+
+  /* 쌓인 그릇 · 건조대 */
+  for(let i=0;i<5;i++){ c.save(); c.translate(54+(i%2)*3,206-i*7); c.rotate((i%2?1:-1)*.05);
+    c.fillStyle=i%2?'#e3d8c0':'#d2c7ac'; c.beginPath(); c.ellipse(0,0,24,8,0,0,7); c.fill();
+    c.fillStyle='rgba(92,70,40,.5)'; c.beginPath(); c.ellipse(-6,-1,7,2.6,.3,0,7); c.fill(); c.restore(); }
+  c.fillStyle='#8e85a8'; rr(c,302,200,70,7,4); c.fill();
+  const dry=Math.min(9,S.dish);
+  for(let i=0;i<dry;i++){ c.save(); c.translate(314+(i%3)*21,198-Math.floor(i/3)*9);
+    c.fillStyle='#f6f1e5'; c.beginPath(); c.ellipse(0,0,10.5,4,0,0,7); c.fill();
+    c.strokeStyle='rgba(0,0,0,.25)'; c.lineWidth=1.2; c.stroke(); c.restore(); }
+  c.font='700 10px sans-serif'; c.textAlign='center'; c.fillStyle='rgba(255,255,255,.45)';
+  c.fillText('쌓인 그릇',54,228); c.fillText('건조대',338,228);
+
+  /* 거품 */
+  S.parts.forEach(p=>{c.globalAlpha=clamp(p.life/p.m,0,1);c.fillStyle=p.col;c.beginPath();c.arc(p.x,p.y,p.r,0,7);c.fill();});
+  c.globalAlpha=1;
+
+  /* 전조 테두리 */
+  if(S.st==='warn'){
+    const red=S.warnKind==='R', col=red?'#ff5e54':'#7cc8f5';
+    const pulse=.45+Math.abs(Math.sin(S.t*15))*.55;
+    c.globalAlpha=pulse*.2; c.fillStyle=col; c.fillRect(0,0,CW,CH); c.globalAlpha=1;
+    c.globalAlpha=pulse; c.strokeStyle=col; c.lineWidth=7; c.strokeRect(3.5,3.5,CW-7,CH-7); c.globalAlpha=1;
+  }
+
+  /* CCTV 띠 */
+  c.fillStyle='rgba(16,10,22,.78)'; c.fillRect(0,252,CW,CH-252);
+  c.fillStyle='rgba(255,255,255,.12)'; c.fillRect(0,252,CW,1);
+  if(S.st==='warn'){
+    const red=S.warnKind==='R', col=red?'#ff6b60':'#8ad2f8', left=S.warnT/S.warnMax;
+    c.textAlign='center'; c.fillStyle=col; c.font='700 15px sans-serif';
+    c.fillText(red?'폭주 직전 — 주의!':'무너지기 직전 — 칭찬!',200,270);
+    c.fillStyle='rgba(0,0,0,.45)'; rr(c,96,276,208,10,5); c.fill();
+    c.fillStyle=col; rr(c,96,276,Math.max(5,208*left),10,5); c.fill();
+  } else {
+    c.textAlign='left'; c.font='700 10px ui-monospace,monospace'; c.fillStyle='rgba(255,245,224,.88)';
+    c.fillText('MOOD',12,266);
+    c.fillStyle='rgba(0,0,0,.5)'; rr(c,12,270,116,9,5); c.fill();
+    c.fillStyle=S.mood>55?'#8fe8ae':S.mood>25?'#ffd23f':'#ff6b60';
+    rr(c,12,270,Math.max(3,116*S.mood/100),9,5); c.fill();
+    c.textAlign='right'; c.fillStyle='rgba(255,245,224,.88)'; c.fillText('설거지',388,266);
+    c.fillStyle='rgba(0,0,0,.5)'; rr(c,272,270,116,9,5); c.fill();
+    c.fillStyle=Y[S.id].c; rr(c,272,270,Math.max(3,116*clamp(S.prog,0,1)),9,5); c.fill();
+  }
+  c.textAlign='left';
+  if(Math.sin(S.t*4)>-.3){c.fillStyle='#ff4b3f';c.beginPath();c.arc(16,292,4.5,0,7);c.fill();}
+  c.fillStyle='rgba(255,245,224,.9)'; c.font='700 11px ui-monospace,monospace';
+  const mm=Math.floor(S.t/60),ss=Math.floor(S.t%60);
+  c.fillText(`REC  19:${String(40+mm).padStart(2,'0')}:${String(ss).padStart(2,'0')}  CAM01`,26,296);
+  for(let i=0;i<3;i++){const x=CW-16-i*21,al=i<S.lives;
+    c.fillStyle=al?'#fff6e2':'rgba(255,255,255,.14)';
+    c.beginPath();c.ellipse(x,291,8,6,0,0,7);c.fill();
+    if(!al){c.strokeStyle='#ff6b60';c.lineWidth=2;c.beginPath();c.moveTo(x-6,286);c.lineTo(x+5,297);c.moveTo(x+5,286);c.lineTo(x-6,297);c.stroke();}}
+
+  /* 화면 질감 */
+  c.fillStyle='rgba(0,0,0,.14)';
+  for(let y=0;y<CH;y+=3) c.fillRect(0,y,CW,1);
+  const vg=c.createRadialGradient(CW/2,CH/2,CH*.34,CW/2,CH/2,CH*.86);
+  vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,'rgba(0,0,0,.5)');
+  c.fillStyle=vg; c.fillRect(0,0,CW,CH);
+  if(S.flash>0){c.globalAlpha=S.flash*.45;c.fillStyle=S.flashCol;c.fillRect(0,0,CW,CH);c.globalAlpha=1;}
+  c.restore();
+}
+
+/* ───────── 화면 전환 · 배선 · 메인 루프 ───────── */
+let SEL='yacha';
+const GRADE=d=>d>=14?['설거지 장인','이 집은 네가 접수했다']:d>=8?['그럭저럭','밥값은 했다']:d>=4?['겨우 밥값','월세는 반만 깎아준다']:['오늘은 적자','그릇이 더 늘었다'];
+
+function renderPick(){
+  S.on=false;
+  $('#play').hidden=true;$('#result').hidden=true;$('#pick').hidden=false;
+  $('#previewSlot').appendChild($('#char'));
+  $('#char').style.display='block';
+  $('#tabs').innerHTML=ROSTER.map(k=>`<button class="tab${k===SEL?' on':''}" data-k="${k}" type="button">${Y[k].name}<small>${Y[k].emo}</small></button>`).join('');
+  selectChar(SEL,true);
+  $('#wallet').textContent=SAVE.wallet;
+  layout(); scrollTo(0,0);
+}
+function selectChar(k,quiet){
+  SEL=k;
+  document.querySelectorAll('#tabs .tab').forEach(t=>t.classList.toggle('on',t.dataset.k===k));
+  const y=Y[k];
+  document.documentElement.style.setProperty('--yc',y.c);
+  $('#spec').innerHTML=`<h3>${y.name} · ${y.tag}</h3><p>${y.note}</p><div class="meta">`+
+    `<span>설거지 ${SPEC[k].wash<4?'빠름':'느림'}</span><span>빨간 전조 ${Math.round(SPEC[k].red*100)}%</span>`+
+    `<span>${SAVE.best[k]?`최고 ${SAVE.best[k]}개`:'아직 안 시켜봤다'}</span></div>`;
+  $('#btnGo').firstChild.textContent=`${y.name} 데려오기`;
+  if(!quiet) Snd.wake();
+}
+
+function showResult(reason){
+  const id=S.id,y=Y[id],L=LINE[id],d=S.dish,[gt,gs]=GRADE(d);
+  const prev=SAVE.best[id]||0, best=d>prev;
+  SAVE.best[id]=Math.max(prev,d); SAVE.wallet+=d; SAVE.days++; saveSave();
+  $('#wallet').textContent=SAVE.wallet;
+  $('#rKick').textContent=reason==='quit'?'조기 퇴근 · 오늘의 CCTV':`사고 ${3-S.lives}건 · 오늘의 CCTV`;
+  $('#rTitle').textContent=`${y.name}, ${gt}`;
+  $('#payDish').textContent=d;$('#payToken').textContent=d;$('#payTotal').textContent=SAVE.wallet;
+  const cl=S.clips;
+  $('#clips').innerHTML=`<div class="ct">사고 기록</div>`+(cl.length
+    ? cl.map(k=>`<div class="clip" style="border-left-color:${k.kind==='R'?'var(--red)':'var(--blue)'}"><span class="tc">${k.tc}</span><span>${k.txt}</span></div>`).join('')
+    : `<div class="clip" style="border-left-color:var(--green)"><span class="tc">—</span><span>사고 없음. 이런 날도 있다.</span></div>`);
+  const q=pick(d>=14?L.good:d>=5?L.mid:L.bad);
+  $('#rQuote').textContent=`“${q}”`;
+  $('#rBest').textContent=best?`최고 기록 경신! (이전 ${prev}개)`:`${y.name} 최고 기록 ${SAVE.best[id]}개 · ${gs}`;
+  const br=cl.filter(k=>k.kind==='R').length, fl=cl.length-br;
+  $('#shareBox').textContent=`📹 스푸크메이트 · 주방 CCTV\n동거 요괴: ${y.name} (${y.emo})\n닦은 그릇 ${d}개 · 품삯 ${d}토큰\n사고: ${br?`그릇 파손 ×${br}`:''}${br&&fl?', ':''}${fl?`싱크대 범람 ×${fl}`:''}${cl.length?'':'없음'}\n“${q}”`;
+  $('#play').hidden=true;$('#result').hidden=false;
+  $('#char').style.display='none';
+  scrollTo(0,0);
+}
+
+let toastT=0;
+function toast(m){const t=$('#toast');t.textContent=m;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>{t.hidden=true;},2000);}
+async function copyShare(){const txt=$('#shareBox').textContent;
+  try{await navigator.clipboard.writeText(txt);toast('복사했어요');}
+  catch(e){const r=document.createRange();r.selectNodeContents($('#shareBox'));const s=getSelection();s.removeAllRanges();s.addRange(r);toast('선택해 뒀어요. 길게 눌러 복사하세요');}}
+
+/* 메인 루프 — 요괴(WebGL)와 부엌(2D)을 같은 프레임에 그린다 */
+let last=0, pt=0;
+function frame(ms){
+  requestAnimationFrame(frame);
+  const dt=Math.min(.05,(ms-last)/1000||0); last=ms; pt+=dt;
+  const playing=!$('#play').hidden;
+  if(playing){
+    step(dt);
+    GL.render(S.t, Y[S.id].i, glPose(), S.amt, S.mood/100);
+    drawFG($('#fg').getContext('2d'));
+    const w=$('#btnWarn'),p=$('#btnPraise');
+    w.classList.toggle('cool',S.cdW>0);p.classList.toggle('cool',S.cdP>0);
+    $('#cdWarn').style.width=(S.cdW/1.2*100)+'%';
+    $('#cdPraise').style.width=(S.cdP/1.2*100)+'%';
+  } else if(!$('#pick').hidden){
+    GL.render(pt, Y[SEL].i, 0, 0, .8);
+  }
+}
+
+/* 배선 */
+if(!GL.init()){
+  document.body.insertAdjacentHTML('afterbegin',
+    '<p style="padding:14px;background:#3a2030;border-radius:12px;margin:0 0 12px">이 브라우저가 WebGL2를 지원하지 않아 요괴를 그릴 수 없습니다. 다른 브라우저에서 열어 주세요.</p>');
+}
+$('#tabs').addEventListener('click',e=>{const b=e.target.closest('.tab');if(b)selectChar(b.dataset.k);});
+$('#btnGo').addEventListener('click',()=>startDay(SEL));
+$('#btnWarn').addEventListener('click',doWarn);
+$('#btnPraise').addEventListener('click',doPraise);
+$('#btnQuit').addEventListener('click',()=>endDay('quit'));
+$('#btnAgain').addEventListener('click',()=>startDay(S.id));
+$('#btnChange').addEventListener('click',renderPick);
+$('#btnCopy').addEventListener('click',copyShare);
+addEventListener('keydown',e=>{if($('#play').hidden)return;
+  if(e.key==='ArrowLeft'||e.key==='1'){e.preventDefault();doWarn();}
+  if(e.key==='ArrowRight'||e.key==='2'){e.preventDefault();doPraise();}});
+addEventListener('resize',()=>{layout();if(!$('#play').hidden)drawBG($('#bgc').getContext('2d'));});
+renderPick();
+requestAnimationFrame(frame);
+})();
+</script>

@@ -1,0 +1,64 @@
+<div class="wrap">
+  <header class="top">
+    <span class="brand">SPOOKMATE</span>
+    <button class="chip" id="btnWallet" type="button" disabled>지갑 <b id="wallet">0</b></button>
+  </header>
+
+  <section id="pick">
+    <h1 class="logo">스푸크메이트</h1>
+    <p class="sub">동거 요괴 구함</p>
+    <p class="premise">요괴도 월세를 낸다. 한 마리를 데려와 같이 살면 집안일을 한다. 오늘 시킬 일은 설거지. 당신은 집에 없고, 펫캠으로 보고 있다.</p>
+    <div class="tabs" id="tabs"></div>
+    <div class="stage" id="previewSlot"></div>
+    <div class="spec" id="spec"></div>
+    <button class="btn" id="btnGo" type="button">데려오기<small>오늘 시킬 일: 설거지</small></button>
+    <ul class="rules">
+      <li>사고 치기 직전에 전조가 뜬다. 빨간 전조는 주의, 파란 전조는 칭찬으로 막는다.</li>
+      <li>사고 3번이면 그날 일은 끝난다.</li>
+      <li>닦은 그릇 하나에 토큰 하나. 혼내면 의욕이 깎이니 눈치껏.</li>
+    </ul>
+  </section>
+
+  <section id="play" hidden>
+    <div class="phead">
+      <div><div class="who" id="camWho"></div><div class="sub2">펫캠 · 주방</div></div>
+      <div class="dish"><span>닦은 그릇</span> <b id="camDish">0</b><span>개</span></div>
+    </div>
+    <div class="stage" id="camSlot">
+      <canvas id="bgc" width="400" height="300"></canvas>
+      <canvas id="fg" width="400" height="300"></canvas>
+      <div class="bubble" id="bubble"></div>
+      <div class="subt" id="subt"></div>
+    </div>
+    <div class="acts">
+      <button class="act warn" id="btnWarn" type="button">주의<small>하던 짓을 멈춘다 · 의욕 깎임</small><i class="cd" id="cdWarn"></i></button>
+      <button class="act praise" id="btnPraise" type="button">칭찬<small>의욕이 오른다 · 사고는 못 막음</small><i class="cd" id="cdPraise"></i></button>
+    </div>
+    <div class="quitrow"><button id="btnQuit" type="button">오늘은 그만 시키기</button></div>
+  </section>
+
+  <section id="result" hidden>
+    <div class="rhead">
+      <span class="rkick" id="rKick"></span>
+      <h2 class="rtitle" id="rTitle"></h2>
+    </div>
+    <div class="rbody">
+      <div class="pay">
+        <div style="--c:var(--yc)"><b id="payDish">0</b>닦은 그릇</div>
+        <div style="--c:var(--gold)"><b id="payToken">0</b>오늘 품삯</div>
+        <div style="--c:var(--green)"><b id="payTotal">0</b>누적 토큰</div>
+      </div>
+      <div class="clips" id="clips"></div>
+      <p class="quote" id="rQuote"></p>
+      <p style="margin:0;font-size:13px;color:var(--dim)" id="rBest"></p>
+    </div>
+    <div class="sharebox" id="shareBox" tabindex="0"></div>
+    <div class="ractions">
+      <button class="btn full" id="btnCopy" type="button">결과 복사하기</button>
+      <button class="btn ghost" id="btnAgain" type="button">한 번 더</button>
+      <button class="btn ghost" id="btnChange" type="button">요괴 바꾸기</button>
+    </div>
+  </section>
+</div>
+<canvas id="char" width="400" height="300" style="display:none"></canvas>
+<div class="toast" id="toast" hidden></div>

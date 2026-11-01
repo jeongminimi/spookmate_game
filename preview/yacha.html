@@ -1,0 +1,239 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>야차 3D</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#191520;color:#eee;font:14px/1.6 system-ui,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:18px}
+h1{font-size:20px;margin:0 0 10px}
+.row{display:grid;grid-template-columns:1fr;gap:14px;max-width:460px;margin:0 auto}
+.box{border-radius:14px;overflow:hidden;background:#241f2e;border:1px solid #3a3348}
+.box canvas{display:block;width:100%;height:auto;background:#2a2024}
+.box .cap{padding:8px 11px;font-size:12px;color:#aca3c0}
+.ctl{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+.ctl button{background:#332c44;border:1px solid #4a4160;color:#eee;border-radius:8px;padding:7px 13px;cursor:pointer;font-size:13px}
+.ctl button.on{background:#ffd23f;color:#241f2e;border-color:#ffd23f;font-weight:700}
+</style></head><body>
+<div class="wrap">
+<h1>야차 — 전신 3D (분노)</h1>
+<div class="ctl" id="ctl"></div>
+<div class="row">
+  <div class="box"><canvas id="v1"></canvas><div class="cap">회전 — 입체 확인용</div></div>
+  <div class="box"><canvas id="v2"></canvas><div class="cap">정면 고정 — 게임에서 보일 각도</div></div>
+</div>
+</div>
+<script>
+if(!window.__dpr){ const _q=new URLSearchParams(location.search).get('dpr'); window.__dpr=_q?+_q:0; }
+const FS = `#version 300 es
+precision highp float;
+out vec4 O;
+uniform vec2 iR; uniform float iT; uniform float iSpin; uniform int iPose;
+
+const vec3 SKIN=vec3(.88,.20,.13), HORN=vec3(.96,.91,.74), MANE=vec3(.16,.06,.06);
+const vec3 CLOTH=vec3(.92,.60,.16), EYEW=vec3(.96,.94,.88), INK=vec3(.07,.04,.05);
+const vec3 BG=vec3(.13,.09,.10);
+
+float smin(float a,float b,float k){float h=clamp(.5+.5*(b-a)/k,0.,1.);return mix(b,a,h)-k*h*(1.-h);}
+float smax(float a,float b,float k){return -smin(-a,-b,k);}
+vec3 rotZ(vec3 p,float a){float c=cos(a),s=sin(a);return vec3(c*p.x-s*p.y,s*p.x+c*p.y,p.z);}
+vec3 rotX(vec3 p,float a){float c=cos(a),s=sin(a);return vec3(p.x,c*p.y-s*p.z,s*p.y+c*p.z);}
+float sdEll(vec3 p,vec3 r){float k0=length(p/r),k1=length(p/(r*r));return k0*(k0-1.)/k1;}
+float sdBox(vec3 p,vec3 b,float rr){vec3 d=abs(p)-b;return length(max(d,0.))+min(max(d.x,max(d.y,d.z)),0.)-rr;}
+float sdCap(vec3 p,vec3 a,vec3 b,float r){vec3 pa=p-a,ba=b-a;float h=clamp(dot(pa,ba)/dot(ba,ba),0.,1.);return length(pa-ba*h)-r;}
+float sdCone(vec3 p,vec3 a,vec3 b,float r1,float r2){
+  vec3 ba=b-a;float l2=dot(ba,ba),rr=r1-r2,a2=l2-rr*rr,il2=1./l2;
+  vec3 pa=p-a;float y=dot(pa,ba),z=y-l2;vec3 w=pa*l2-ba*y;float x2=dot(w,w),y2=y*y*l2,z2=z*z*l2;
+  float k=sign(rr)*rr*rr*x2;
+  if(sign(z)*a2*z2>k)return sqrt(x2+z2)*il2-r2;
+  if(sign(y)*a2*y2<k)return sqrt(x2+y2)*il2-r1;
+  return (sqrt(x2*a2*il2)+y*rr)*il2-r1;}
+
+float gSway, gRage;
+vec2 map(vec3 p){
+  /* 숨 쉬듯 들썩이고, 화가 오르면 앞으로 더 숙인다 */
+  vec3 q=rotX(p-vec3(0.,-.55,0.), .09+gRage*.12)+vec3(0.,-.55,0.);
+  q.y-=gSway*.012;
+
+  /* ── 몸통 ── */
+  float body=sdEll(q-vec3(0.,.16,.05),vec3(.46,.31,.35));
+  body=smin(body,sdEll(q-vec3(0.,-.15,.08),vec3(.40,.27,.33)),.18);
+  body=smin(body,length(q-vec3(-.22,.25,.30))-.17,.11);     /* 가슴 */
+  body=smin(body,length(q-vec3( .22,.25,.30))-.17,.11);
+  body=smin(body,length(q-vec3(-.31,.43,-.02))-.21,.14);    /* 승모근 */
+  body=smin(body,length(q-vec3( .31,.43,-.02))-.21,.14);
+  body=smin(body,length(q-vec3(-.52,.34,.02))-.245,.15);    /* 어깨 */
+  body=smin(body,length(q-vec3( .52,.34,.02))-.245,.15);
+  body=smin(body,sdCap(q,vec3(0.,.48,.02),vec3(0.,.70,.03),.215),.12); /* 굵은 목 */
+  vec2 r=vec2(body,0.);
+
+  /* ── 머리 ── */
+  vec3 H=vec3(0.,.92,.06);
+  float head=sdEll(q-H,vec3(.45,.41,.43));
+  head=smin(head,sdEll(q-vec3(0.,.66,.20),vec3(.37,.21,.35)),.14);   /* 턱 */
+  head=smin(head,sdEll(q-vec3(0.,1.06,.30),vec3(.41,.10,.21)),.09);  /* 눈두덩 */
+  head=smin(head,length(q-vec3(-.36,.82,.18))-.15,.12);              /* 광대 */
+  head=smin(head,length(q-vec3( .36,.82,.18))-.15,.12);
+  float gape=.055+gRage*.085;
+  head=smax(head,-sdEll(q-vec3(0.,.645,.36),vec3(.285,gape+.08,.26)),.05); /* 벌린 입 */
+  if(head<r.x)r=vec2(head,0.);
+
+  /* ── 뿔 · 송곳니 ── */
+  float horn=sdCone(q,vec3(-.27,1.16,-.04),vec3(-.40,1.44,-.16),.125,.055);
+  horn=smin(horn,sdCone(q,vec3(-.40,1.44,-.16),vec3(-.44,1.68,-.34),.055,.012),.05);
+  horn=smin(horn,sdCone(q,vec3( .27,1.16,-.04),vec3( .40,1.44,-.16),.125,.055),.02);
+  horn=smin(horn,sdCone(q,vec3( .40,1.44,-.16),vec3( .44,1.68,-.34),.055,.012),.05);
+  for(int i=0;i<5;i++){ float fi=float(i)-2., fx=fi*.105, sc=1.+abs(fi)*.42;
+    horn=min(horn,sdCone(q,vec3(fx,.705,.395),vec3(fx,.705-(gape+.055)*sc,.425),.036*sc,.006));
+    if(i<4){ float gx=(float(i)-1.5)*.115, gs=1.+abs(float(i)-1.5)*.40;
+      horn=min(horn,sdCone(q,vec3(gx,.585,.395),vec3(gx,.585+(gape+.04)*gs,.425),.030*gs,.006)); } }
+  if(horn<r.x)r=vec2(horn,1.);
+
+  /* ── 갈기 ── */
+  float mb=length(q-vec3(0.,1.10,-.22))-1.15;
+  if(mb<.14){
+    float m=1e9;
+    for(int i=0;i<9;i++){ float a=(float(i)/8.-.5)*2.3;
+      vec3 b=vec3(sin(a)*.34,1.10-abs(a)*.12,-.18-cos(a)*.28);
+      vec3 t=b+vec3(sin(a)*.08,.34+sin(float(i)*1.7+gSway*.6)*.11,-.42-cos(a)*.18);
+      m=smin(m,sdCone(q,b,t,.125,.014),.10); }
+    if(m<r.x)r=vec2(m,2.);
+  } else if(mb<r.x) r=vec2(mb,2.);
+
+  /* ── 팔 ── */
+  float ay=iPose==1? -.16 : (iPose==2? .74 : 0.);
+  float az=iPose==1?  .30 : (iPose==2? -.18 : 0.);
+  vec3 sL=vec3(-.52,.34,.02), sR=vec3(.52,.34,.02);
+  vec3 eL=vec3(-.80,-.02+ay*.45,.08+az*.5), eR=vec3(.80,-.04+ay*.45,.06+az*.5);
+  vec3 fL=vec3(-.72,-.44+ay,.30+az),        fR=vec3(.73,-.46+ay,.28+az);
+  float arm=sdCone(q,sL,eL,.205,.165);
+  arm=min(arm,sdCone(q,sR,eR,.205,.165));
+  arm=smin(arm,sdCone(q,eL,fL,.165,.175),.06);
+  arm=smin(arm,sdCone(q,eR,fR,.165,.175),.06);
+  arm=smin(arm,sdEll(q-fL,vec3(.21,.19,.20)),.05);          /* 주먹 */
+  arm=smin(arm,sdEll(q-fR,vec3(.21,.19,.20)),.05);
+  if(arm<r.x)r=vec2(arm,0.);
+
+  /* ── 허리 가죽 ── */
+  float cloth=sdEll(q-vec3(0.,-.36,.02),vec3(.475,.205,.44));
+  cloth=min(cloth,sdBox(q-vec3(0.,-.60,.345),vec3(.215,.175,.015),.035));
+  cloth=min(cloth,sdBox(q-vec3(0.,-.60,-.295),vec3(.215,.175,.015),.035));
+  cloth=min(cloth,sdEll(q-vec3(0.,-.22,.02),vec3(.495,.05,.455)));   /* 허리끈 */
+  if(cloth<r.x)r=vec2(cloth,3.);
+
+  /* ── 눈알 ── */
+  float eye=min(length(q-vec3(-.20,.98,.37))-.135,length(q-vec3(.20,.98,.37))-.135);
+  if(eye<r.x)r=vec2(eye,4.);
+
+  /* ── 다리 ── */
+  float leg=sdCone(q,vec3(-.25,-.36,.02),vec3(-.31,-.72,.03),.225,.16);
+  leg=min(leg,sdCone(q,vec3(.25,-.36,.02),vec3(.31,-.72,.03),.225,.16));
+  leg=smin(leg,sdCone(q,vec3(-.31,-.72,.03),vec3(-.34,-.93,-.01),.16,.125),.05);
+  leg=smin(leg,sdCone(q,vec3( .31,-.72,.03),vec3( .34,-.93,-.01),.16,.125),.05);
+  leg=smin(leg,sdEll(q-vec3(-.35,-.96,.11),vec3(.155,.07,.25)),.05);
+  leg=smin(leg,sdEll(q-vec3( .35,-.96,.11),vec3(.155,.07,.25)),.05);
+  if(leg<r.x)r=vec2(leg,0.);
+
+  float g=p.y+1.03;
+  if(g<r.x)r=vec2(g,5.);
+  return r;
+}
+vec3 nor(vec3 p){vec2 e=vec2(.0015,0);
+  return normalize(vec3(map(p+e.xyy).x-map(p-e.xyy).x,map(p+e.yxy).x-map(p-e.yxy).x,map(p+e.yyx).x-map(p-e.yyx).x));}
+float sha(vec3 ro,vec3 rd){float s=1.,t=.05;
+  for(int i=0;i<30;i++){float h=map(ro+rd*t).x;if(h<.0015)return 0.;s=min(s,9.*h/t);t+=clamp(h,.03,.26);if(t>4.5)break;}
+  return clamp(s,0.,1.);}
+float ao(vec3 p,vec3 n){float o=0.,w=1.;
+  for(int i=0;i<5;i++){float h=.02+.12*float(i);o+=(h-map(p+n*h).x)*w;w*=.72;}
+  return clamp(1.-1.5*o,0.,1.);}
+float bar2(vec2 p,vec2 c,vec2 r,float a){
+  vec2 q=p-c;q=vec2(q.x*cos(a)-q.y*sin(a),q.x*sin(a)+q.y*cos(a));
+  vec2 d=abs(q)-r;return 1.-smoothstep(-.014,.014,min(max(d.x,d.y),0.)+length(max(d,0.)));}
+
+void main(){
+  vec2 uv=(gl_FragCoord.xy*2.-iR)/iR.y;
+  gSway=sin(iT*1.6); gRage=iPose==2? .5+.5*sin(iT*7.) : 0.;
+  float a=iSpin>.5? iT*.45 : .26;
+  vec3 ro=vec3(sin(a)*3.9,.40,cos(a)*3.9);
+  vec3 ww=normalize(vec3(0.,.10,0.)-ro),uu=normalize(cross(vec3(0,1,0),ww)),vv=cross(ww,uu);
+  vec3 rd=normalize(uv.x*uu+uv.y*vv+2.3*ww);
+  float t=.1;vec2 h=vec2(-1.);
+  for(int i=0;i<96;i++){h=map(ro+rd*t);if(h.x<.0016*t)break;t+=h.x*.80;if(t>13.){h.y=-1.;break;}}
+  vec3 col=BG+vec3(.07,.03,.02)*(1.-length(uv)*.35);
+  if(h.y>=0.){
+    vec3 p=ro+rd*t,n=nor(p);
+    vec3 base=SKIN;
+    if(h.y<.5){
+      base=SKIN;
+      vec3 d=p-vec3(0.,.92,.06);
+      if(d.z>.10){
+        vec2 f=vec2(d.x,d.y-.92+.92);           /* 얼굴 평면 좌표 */
+        f=vec2(d.x,d.y);
+        base=mix(base,INK,bar2(f,vec2(-.23,.16),vec2(.175,.032),-.40));   /* 성난 눈썹 */
+        base=mix(base,INK,bar2(f,vec2( .23,.16),vec2(.175,.032), .40));
+        base=mix(base,INK,bar2(f,vec2(-.055,.11),vec2(.016,.075),-.16));  /* 미간 주름 */
+        base=mix(base,INK,bar2(f,vec2( .055,.11),vec2(.016,.075), .16));
+        base=mix(base,SKIN*.72,bar2(f,vec2(0.,-.14),vec2(.030,.065),0.)); /* 코 */
+      }
+      float gp=.055+gRage*.085;
+      if(length((p-vec3(0.,.645,.36))/vec3(.30,gp+.10,.29))<1.06) base=vec3(.26,.035,.05);
+      base*= .88+.12*smoothstep(-.5,.6,p.y);
+    }
+    else if(h.y<1.5) base=HORN;
+    else if(h.y<2.5) base=MANE;
+    else if(h.y<3.5){ base=CLOTH;
+      float st=sin(p.x*7.5+p.y*2.4+sin(p.y*5.)*.8)*.5+.5;
+      base=mix(base,vec3(.26,.12,.05),smoothstep(.40,.56,st));
+      if(abs(p.y+.22)<.058) base=vec3(.44,.16,.12); }   /* 호피 무늬 · 허리끈 */
+    else if(h.y<4.5){ base=EYEW;
+      vec3 d=p-vec3(sign(p.x)*.20,.98,.37);
+      if(length(d.xy-vec2(0.,-.012))<.062) base=vec3(.95,.78,.10);  /* 노란 홍채 */
+      if(length(d.xy-vec2(0.,-.012))<.030) base=INK; }
+    else { base=vec3(.17,.12,.12); n=vec3(0,1,0); }
+
+    vec3 L=normalize(vec3(-.50,.82,.56));
+    float dif=clamp(dot(n,L),0.,1.), s=sha(p+n*.02,L), o=ao(p,n);
+    float sky=clamp(.5+.5*n.y,0.,1.);
+    float rim=pow(clamp(1.+dot(n,rd),0.,1.),3.);
+    vec3 lin=base*(vec3(1.12,1.00,.84)*dif*s*1.10 + vec3(.34,.30,.44)*sky*o*.50 + vec3(.22)*o);
+    lin+=rim*.30*vec3(1.,.62,.42)*o;
+    /* 화가 오르면 몸에서 열이 올라온다 */
+    lin+=SKIN*gRage*.18*clamp(1.-p.y,0.,1.)*o;
+    float spe=pow(clamp(dot(reflect(-L,n),-rd),0.,1.),26.)*.10*s;
+    col=lin+spe;
+    col=mix(col,BG,1.-exp(-.0022*t*t*t));
+  }
+  col=pow(clamp(col,0.,1.),vec3(.4545));
+  O=vec4(col,1.);
+}`;
+const POSES = [['가만히 서 있기',0],['설거지 중 (팔 앞으로)',1],['폭주 직전 (포효)',2]];
+let pose = 0;
+document.getElementById('ctl').innerHTML = POSES.map((p,i)=>`<button data-i="${i}" class="${i?'':'on'}">${p[0]}</button>`).join('');
+document.getElementById('ctl').onclick = e => { const b=e.target.closest('button'); if(!b)return;
+  pose=+b.dataset.i; [...e.currentTarget.children].forEach((c,i)=>c.classList.toggle('on',i===pose)); };
+
+function view(id, spin){
+  const cv=document.getElementById(id), gl=cv.getContext('webgl2',{antialias:false});
+  if(!gl){cv.outerHTML='<div style="padding:20px">WebGL2 미지원</div>';return;}
+  const sh=(t,s)=>{const o=gl.createShader(t);gl.shaderSource(o,s);gl.compileShader(o);
+    if(!gl.getShaderParameter(o,gl.COMPILE_STATUS))console.error('SHADER',gl.getShaderInfoLog(o));return o;};
+  const pr=gl.createProgram();
+  gl.attachShader(pr,sh(gl.VERTEX_SHADER,`#version 300 es\nin vec2 p;void main(){gl_Position=vec4(p,0,1);}`));
+  gl.attachShader(pr,sh(gl.FRAGMENT_SHADER,FS));gl.linkProgram(pr);
+  if(!gl.getProgramParameter(pr,gl.LINK_STATUS))console.error('LINK',gl.getProgramInfoLog(pr));
+  gl.useProgram(pr);
+  const b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);
+  gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
+  const lp=gl.getAttribLocation(pr,'p');gl.enableVertexAttribArray(lp);gl.vertexAttribPointer(lp,2,gl.FLOAT,false,0,0);
+  const uR=gl.getUniformLocation(pr,'iR'),uT=gl.getUniformLocation(pr,'iT'),
+        uS=gl.getUniformLocation(pr,'iSpin'),uP=gl.getUniformLocation(pr,'iPose');
+  function fit(){const d=window.__dpr||Math.min(1.6,devicePixelRatio||1);
+    cv.width=Math.round(cv.clientWidth*d);cv.height=Math.round(cv.clientWidth*1.15*d);
+    cv.style.height=(cv.clientWidth*1.15)+'px';gl.viewport(0,0,cv.width,cv.height);}
+  addEventListener('resize',fit);fit();
+  (function f(ms){gl.uniform2f(uR,cv.width,cv.height);gl.uniform1f(uT,ms/1000);
+    gl.uniform1f(uS,spin?1:0);gl.uniform1i(uP,pose);
+    gl.drawArrays(gl.TRIANGLES,0,3);requestAnimationFrame(f);})(0);
+}
+if(!window.__only) view('v1',true);
+view('v2',false);
+</script></body></html>
