@@ -1,0 +1,57 @@
+<div class="wrap">
+<h1>발열 측정</h1>
+<p class="lead">실제 게임과 같은 3D 요괴를 돌리면서 초당 프레임 수를 잽니다. 발열로 성능이 깎이면 시간이 갈수록 수치가 내려갑니다. 그 하락폭이 곧 발열의 크기입니다.</p>
+
+<div class="big">
+  <div style="--c:var(--good)"><b id="fps">—</b><span>지금 FPS</span></div>
+  <div style="--c:var(--accent)"><b id="ms">—</b><span>프레임 시간 (ms)</span></div>
+</div>
+
+<div class="card">
+  <canvas id="view"></canvas>
+  <canvas id="graph" width="880" height="184"></canvas>
+  <div class="glab"><span>0초</span><span id="gmid">측정 안 함</span><span>3분</span></div>
+
+  <div class="row" id="charRow">
+    <button data-c="0" class="on">오이와</button>
+    <button data-c="1">야차</button>
+  </div>
+  <div class="row" id="poseRow">
+    <button data-p="0">가만히</button>
+    <button data-p="1" class="on">설거지</button>
+    <button data-p="2">폭주 (제일 무거움)</button>
+  </div>
+  <label class="sl">해상도 배율 <b id="scv">1.0×</b> — 끊기면 낮춰 보세요
+    <input type="range" id="sc" min="40" max="150" value="100" step="5"></label>
+
+  <button class="btn" id="run" type="button">3분 측정 시작</button>
+  <div class="verdict" id="verdict"></div>
+</div>
+
+<h2>측정하는 법</h2>
+<ol>
+  <li><b>폭주</b>를 누르세요. 게임에서 제일 무거운 상태입니다. 여기서 괜찮으면 나머지는 다 괜찮습니다.</li>
+  <li><b>3분 측정 시작</b>을 누르고 <b>화면을 켠 채로</b> 두세요. 화면이 꺼지면 측정이 멈춥니다.</li>
+  <li>측정 중에는 다른 앱으로 넘어가지 마세요. 넘어가면 브라우저가 렌더링을 멈춥니다.</li>
+  <li>3분이 지나면 판정이 아래에 나옵니다.</li>
+</ol>
+
+<h2>손으로도 같이 확인하세요</h2>
+<ul>
+  <li>측정이 끝난 직후 <b>폰 뒷면 카메라 주변</b>을 만져 보세요. 거기가 제일 먼저 뜨거워집니다. 따뜻한 정도면 정상, 손을 떼고 싶으면 과합니다.</li>
+  <li>측정 전과 후의 <b>배터리 퍼센트</b>를 적어 두세요. 3분에 2% 이상 빠지면 부담이 큰 겁니다.</li>
+  <li>화면이 저절로 <b>어두워지면</b> 기기가 열을 식히려는 신호입니다. 이건 명백한 과열입니다.</li>
+  <li>아이폰이라면 끝난 뒤 <b>설정 → 배터리</b>에서 브라우저 사용량을 보세요.</li>
+  <li>안드로이드라면 <b>개발자 옵션 → GPU 렌더링 속도 프로파일</b>을 켜면 화면에 막대가 실시간으로 뜹니다.</li>
+</ul>
+
+<h2>숫자 읽는 법</h2>
+<ul>
+  <li><b>FPS 55 이상</b> — 쾌적합니다. 그대로 가면 됩니다.</li>
+  <li><b>40~55</b> — 쓸 만합니다. 해상도 배율을 0.8로 낮추면 여유가 생깁니다.</li>
+  <li><b>25~40</b> — 끊김이 느껴집니다. 배율을 낮추거나 계산량을 줄여야 합니다.</li>
+  <li><b>25 미만</b> — 실시간 3D를 포기하고 미리 구운 이미지로 바꾸는 게 맞습니다.</li>
+  <li><b>하락폭</b>이 처음 대비 15% 이상이면 발열로 기기가 성능을 깎고 있다는 뜻입니다. 절대 수치보다 이게 더 중요합니다.</li>
+</ul>
+<p class="note">측정값은 이 기기와 이 브라우저 기준입니다. 다른 사람 폰에서는 다르게 나옵니다. 가능하면 저사양 기기에서도 한 번 돌려 보세요.</p>
+</div>
