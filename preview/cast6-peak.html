@@ -80,10 +80,12 @@
   </div>
 </div>
 <script>
-const FS=`#version 300 es
+/* 요괴 하나당 프로그램 하나. 여섯을 셰이더 한 개에 넣으면 그림자·음영이
+   여섯 벌로 펼쳐져 코드가 커지고, 윈도우 크롬(ANGLE→D3D)에서 컴파일이 깨진다. */
+const HEAD=`#version 300 es
 precision highp float;
-out vec4 O; uniform vec2 iR; uniform float iT; uniform float iE;
-int gC; float gE;
+out vec4 O; uniform vec2 iR; uniform float iT; uniform float iE; uniform vec4 iCell;
+float gE;
 
 float smin(float a,float b,float k){float h=clamp(.5+.5*(b-a)/k,0.,1.);return mix(b,a,h)-k*h*(1.-h);}
 float smax(float a,float b,float k){return -smin(-a,-b,k);}
@@ -102,7 +104,9 @@ float sdCone(vec3 p,vec3 a,vec3 b,float r1,float r2){
   return (sqrt(x2*a2*il2)+y*rr)*il2-r1;}
 float sdTor(vec3 p,vec2 t){vec2 q=vec2(length(p.xz)-t.x,p.y);return length(q)-t.y;}
 
-/* ══ 1. 우렁각시 — 수치 ══ */
+`;
+const MAPS=[
+`/* ══ 1. 우렁각시 — 수치 ══ */
 vec2 mapUrong(vec3 p){
   float shy=mix(.5+.5*sin(iT*.55),1.,gE);      /* 부끄러움 — 머리를 껍데기로 당긴다 */
   float hide=gE*.86;                           /* 극단 — 몸이 껍데기 안으로 빨려 들어간다 */
@@ -144,9 +148,8 @@ vec2 mapUrong(vec3 p){
     am=smin(am,sdEll(q-hd2,vec3(.085,.10,.055)),.04); }
   if(am<r.x)r=vec2(am,0.);
   return r;
-}
-
-/* ══ 2. 어둑시니 — 공포 ══ */
+}`,
+`/* ══ 2. 어둑시니 — 공포 ══ */
 vec2 mapEodook(vec3 p){
   float big=(1.+.14*sin(iT*.8)+.05*sin(iT*2.3))*(1.+gE*.80);   /* 쳐다볼수록 커진다 */
   vec3 q=p/big; q.y-=.05;
@@ -171,9 +174,8 @@ vec2 mapEodook(vec3 p){
                sdEll(q-vec3( .105+gE*.035,.705,.265),er));
   if(ey*big<r.x)r=vec2(ey*big,3.);
   return r;
-}
-
-/* ══ 3. 쿠단 — 불안 ══ */
+}`,
+`/* ══ 3. 쿠단 — 불안 ══ */
 vec2 mapKudan(vec3 p){
   vec3 q=p; q.y-=sin(iT*1.3)*.012;
   float talk=mix(max(0.,sin(iT*3.1)),.65+.35*abs(sin(iT*9.)),gE);
@@ -234,9 +236,8 @@ vec2 mapKudan(vec3 p){
   float tl=sdCap(q,vec3(0.,.22,-.62),vec3(.06+sin(iT*1.7)*.07,-.22,-.74),.035);
   if(tl<r.x)r=vec2(tl,1.);
   return r;
-}
-
-/* ══ 4. 눗페포 — 권태 ══ */
+}`,
+`/* ══ 4. 눗페포 — 권태 ══ */
 vec2 mapNuppe(vec3 p){
   vec3 q=p; float sag=sin(iT*.62)*.022;
   q.y-=sag-gE*.22; q=rotZ(q,sin(iT*.44)*.045*(1.-gE*.7));
@@ -279,9 +280,8 @@ vec2 mapNuppe(vec3 p){
   float mo=sdEll(q-mP,vec3(.155+gE*.05,.045,.055+gE*.04));
   if(mo<r.x)r=vec2(mo,4.);
   return r;
-}
-
-/* ══ 5. 카파 — 기쁨 ══ */
+}`,
+`/* ══ 5. 카파 — 기쁨 ══ */
 vec2 mapKappa(vec3 p){
   float hop=abs(sin(iT*(1.9+gE*4.2)))*(.045+gE*.13);
   vec3 q=p; q.y-=hop; q=rotZ(q,sin(iT*1.9)*.05);
@@ -325,9 +325,8 @@ vec2 mapKappa(vec3 p){
     lb=smin(lb,sdEll(q-vec3(sx*.20,-.60,.12),vec3(.085,.035,.115)),.03); }
   if(lb<r.x)r=vec2(lb,0.);
   return r;
-}
-
-/* ══ 6. 아카나메 — 혐오 ══ */
+}`,
+`/* ══ 6. 아카나메 — 혐오 ══ */
 vec2 mapAka(vec3 p){
   vec3 q=p; q.y-=sin(iT*1.15)*.014;
   /* 웅크린 몸 */
@@ -361,17 +360,10 @@ vec2 mapAka(vec3 p){
     am=smin(am,sdCap(q,vec3(sx*.18,-.44,.02),vec3(sx*.24,-.60,.12),.075),.05); }
   if(am<r.x)r=vec2(am,0.);
   return r;
-}
-
-vec2 map(vec3 p){
-  if(gC==0) return mapUrong(p);
-  if(gC==1) return mapEodook(p);
-  if(gC==2) return mapKudan(p);
-  if(gC==3) return mapNuppe(p);
-  if(gC==4) return mapKappa(p);
-  return mapAka(p);
-}
-vec3 nor(vec3 p){vec2 e=vec2(.0018,0);
+}`
+];
+const FN=['mapUrong','mapEodook','mapKudan','mapNuppe','mapKappa','mapAka'];
+const NSA=`vec3 nor(vec3 p){vec2 e=vec2(.0018,0);
   return normalize(vec3(map(p+e.xyy).x-map(p-e.xyy).x,map(p+e.yxy).x-map(p-e.yxy).x,map(p+e.yyx).x-map(p-e.yyx).x));}
 float sha(vec3 ro,vec3 rd){float s=1.,t=.05;
   for(int i=0;i<20;i++){float h=map(ro+rd*t).x;if(h<.002)return 0.;s=min(s,9.*h/t);t+=clamp(h,.05,.30);if(t>3.4)break;}
@@ -380,7 +372,8 @@ float ao(vec3 p,vec3 n){float o=0.,w=1.;
   for(int i=0;i<4;i++){float h=.025+.13*float(i);o+=(h-map(p+n*h).x)*w;w*=.72;}
   return clamp(1.-1.5*o,0.,1.);}
 
-vec3 palette(float m){
+`;
+const PAL=`vec3 palette(float m){
   if(gC==0){                                    /* 우렁각시 — 젖은 진주빛 */
     if(m<.5) return vec3(.80,.82,.76);
     if(m<1.5)return vec3(.58,.70,.62);
@@ -415,13 +408,10 @@ vec3 palette(float m){
   return vec3(.80,.36,.40);
 }
 
-void main(){
-  /* 3x2 격자 — 칸마다 다른 요괴, 다른 카메라 */
-  vec2 g=gl_FragCoord.xy/iR;
-  int cx=int(floor(g.x*3.)), cy=int(floor(g.y*2.));
-  gC = (1-cy)*3 + cx; gE = iE;
-  vec2 cell=vec2(fract(g.x*3.),fract(g.y*2.));
-  vec2 uv=(cell*2.-1.); uv.x*=(iR.x/3.)/(iR.y/2.);
+`;
+const MAIN=`void main(){
+  gE = iE;
+  vec2 uv=((gl_FragCoord.xy-iCell.xy)*2.-iCell.zw)/iCell.w;
 
   float cd = gC==2? 3.35 : gC==3? 3.25 : gC==4? 2.95 : gC==1? 3.25 : 3.15;
   cd += gE*(gC==1? 2.55 : gC==5? .62 : gC==3? .34 : .18);
@@ -454,43 +444,62 @@ void main(){
 }`;
 const VS=`#version 300 es
 in vec2 a; void main(){gl_Position=vec4(a,0.,1.);}`;
+
 const cv=document.getElementById('cv');
 const gl=cv.getContext('webgl2',{antialias:false});
-if(!gl){ document.querySelector('.stage').insertAdjacentHTML('beforeend',
-  '<p style="position:absolute;inset:0;display:grid;place-items:center;padding:20px;text-align:center">이 브라우저는 WebGL2를 지원하지 않습니다.</p>'); }
+const fail=m=>{document.querySelector('.stage').insertAdjacentHTML('beforeend',
+  '<p style="position:absolute;inset:0;display:grid;place-items:center;padding:24px;text-align:center;'+
+  'font-size:14px;line-height:1.6;color:#f6efe2;background:rgba(12,8,16,.9)">'+m+'</p>');};
+if(!gl){ fail('이 브라우저는 WebGL2를 지원하지 않습니다.<br>크롬이나 사파리 최신 버전에서 열어 주세요.'); }
 else{
-  const sh=(ty,src)=>{const s=gl.createShader(ty);gl.shaderSource(s,src);gl.compileShader(s);
-    if(!gl.getShaderParameter(s,gl.COMPILE_STATUS)){console.error(gl.getShaderInfoLog(s));return null;}return s;};
-  const pr=gl.createProgram();
-  const vs=sh(gl.VERTEX_SHADER,VS), fs=sh(gl.FRAGMENT_SHADER,FS);
-  gl.attachShader(pr,vs);gl.attachShader(pr,fs);gl.bindAttribLocation(pr,0,'a');gl.linkProgram(pr);
-  if(!gl.getProgramParameter(pr,gl.LINK_STATUS))console.error(gl.getProgramInfoLog(pr));
-  gl.useProgram(pr);
-  const b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);
-  gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
-  gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0);
-  const uR=gl.getUniformLocation(pr,'iR'), uT=gl.getUniformLocation(pr,'iT'), uE=gl.getUniformLocation(pr,'iE');
-  const sl=document.getElementById('amt'), ov=document.getElementById('amtv'), ab=document.getElementById('auto');
-  let auto=true, shown=0;
-  sl.addEventListener('input',()=>{auto=false;ab.setAttribute('aria-pressed','false');ab.textContent='자동 반복 꺼짐';});
-  ab.addEventListener('click',()=>{auto=!auto;ab.setAttribute('aria-pressed',String(auto));
-    ab.textContent=auto?'자동 반복 켜짐':'자동 반복 꺼짐';});
-  const t0=performance.now();
-  function fit(){const d=window.__dpr||Math.min(1.5,devicePixelRatio||1);
-    const w=Math.round(cv.clientWidth*d), hh=Math.round(cv.clientHeight*d);
-    if(cv.width!==w||cv.height!==hh){cv.width=w;cv.height=hh;gl.viewport(0,0,w,hh);} }
-  function frame(){ fit();
-    const tt=(performance.now()-t0)/1000;
-    if(auto){ /* 0에서 1까지 천천히 올라갔다가 잠깐 머물고 돌아온다 */
-      const c=(tt*.14)%1, e=c<.42? c/.42 : c<.68? 1 : c<.86? 1-(c-.68)/.18 : 0;
-      sl.value=String(Math.round(e*100)); }
-    const e=+sl.value/100;
-    if(Math.round(e*100)!==shown){ shown=Math.round(e*100);
-      ov.textContent = shown===0?'평상시' : shown>=99?'극단' : shown+'%'; }
-    gl.uniform2f(uR,cv.width,cv.height);
-    gl.uniform1f(uT,tt); gl.uniform1f(uE,e*e*(3.-2.*e));
-    gl.drawArrays(gl.TRIANGLES,0,3);
-    requestAnimationFrame(frame); }
-  addEventListener('resize',fit); frame();
+  const sh=(ty,src)=>{const o=gl.createShader(ty);gl.shaderSource(o,src);gl.compileShader(o);
+    if(!gl.getShaderParameter(o,gl.COMPILE_STATUS)){console.error(gl.getShaderInfoLog(o));return null;}return o;};
+  const vs=sh(gl.VERTEX_SHADER,VS);
+  const progs=[]; let bad=0;
+  for(let i=0;i<6;i++){
+    const src=HEAD+'const int gC='+i+';\n'+MAPS[i]+'\nvec2 map(vec3 p){return '+FN[i]+'(p);}\n'+NSA+PAL+MAIN;
+    const fs=sh(gl.FRAGMENT_SHADER,src);
+    if(!fs||!vs){bad++;progs.push(null);continue;}
+    const pr=gl.createProgram();
+    gl.attachShader(pr,vs);gl.attachShader(pr,fs);gl.bindAttribLocation(pr,0,'a');gl.linkProgram(pr);
+    if(!gl.getProgramParameter(pr,gl.LINK_STATUS)){console.error(gl.getProgramInfoLog(pr));bad++;progs.push(null);continue;}
+    progs.push({pr,uR:gl.getUniformLocation(pr,'iR'),uT:gl.getUniformLocation(pr,'iT'),
+                uE:gl.getUniformLocation(pr,'iE'),uC:gl.getUniformLocation(pr,'iCell')});
+  }
+  if(bad===6){ fail('이 기기의 그래픽 드라이버가 요괴를 그리지 못했습니다.<br>다른 브라우저에서 열어 주세요.'); }
+  else{
+    const b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);
+    gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0);
+    gl.enable(gl.SCISSOR_TEST);
+    const sl=document.getElementById('amt'), ov=document.getElementById('amtv'), ab=document.getElementById('auto');
+    let auto=true, shown=-1;
+    sl.addEventListener('input',()=>{auto=false;ab.setAttribute('aria-pressed','false');ab.textContent='자동 반복 꺼짐';});
+    ab.addEventListener('click',()=>{auto=!auto;ab.setAttribute('aria-pressed',String(auto));
+      ab.textContent=auto?'자동 반복 켜짐':'자동 반복 꺼짐';});
+    const t0=performance.now();
+    function fit(){const d=window.__dpr||Math.min(1.5,devicePixelRatio||1);
+      const w=Math.round(cv.clientWidth*d), h=Math.round(cv.clientHeight*d);
+      if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h;} }
+    function frame(){ fit();
+      const tt=(performance.now()-t0)/1000;
+      if(auto){ const c=(tt*.14)%1, e=c<.42? c/.42 : c<.68? 1 : c<.86? 1-(c-.68)/.18 : 0;
+        sl.value=String(Math.round(e*100)); }
+      const e=+sl.value/100, se=e*e*(3.-2.*e);
+      if(Math.round(e*100)!==shown){ shown=Math.round(e*100);
+        ov.textContent = shown===0?'평상시' : shown>=99?'극단' : shown+'%'; }
+      const W=cv.width, H=cv.height, cw=Math.ceil(W/3), ch=Math.ceil(H/2);
+      gl.viewport(0,0,W,H); gl.scissor(0,0,W,H);
+      gl.clearColor(0,0,0,0); gl.clear(gl.COLOR_BUFFER_BIT);
+      for(let i=0;i<6;i++){ const P=progs[i]; if(!P) continue;
+        const x=(i%3)*cw, y=(i<3? ch : 0);
+        gl.viewport(x,y,cw,ch); gl.scissor(x,y,cw,ch);
+        gl.useProgram(P.pr);
+        gl.uniform2f(P.uR,W,H); gl.uniform1f(P.uT,tt); gl.uniform1f(P.uE,se);
+        gl.uniform4f(P.uC,x,y,cw,ch);
+        gl.drawArrays(gl.TRIANGLES,0,3); }
+      requestAnimationFrame(frame); }
+    addEventListener('resize',fit); frame();
+  }
 }
 </script></body></html>
