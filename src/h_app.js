@@ -60,6 +60,7 @@ function frame(ms){
   const dt=Math.min(.05,(ms-last)/1000||0); last=ms; pt+=dt;
   const playing=!$('#play').hidden;
   if(playing){
+    GL.tune(dt);
     step(dt);
     GL.render(S.t, Y[S.id].i, glPose(), S.amt, S.mood/100);
     drawFG($('#fg').getContext('2d'));

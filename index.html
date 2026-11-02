@@ -461,7 +461,18 @@ const rnd = (a,b) => a + Math.random()*(b-a);
 const pick = a => a[Math.floor(Math.random()*a.length)];
 
 const GL = {
-  cv:null, gl:null, u:{}, ok:false, dpr:1,
+  cv:null, gl:null, u:{}, ok:false,
+  /* 해상도 자동 조절 — 프레임 시간이 예산을 넘으면 내리고, 여유가 있으면 올린다.
+     기기마다 성능이 다르니 숫자를 고정하지 않고 기기가 스스로 찾게 둔다. */
+  scale:1, acc:0, n:0, hold:0, cap:1.5, min:0.55,
+  tune(dt){
+    this.acc+=dt; this.n++; this.hold-=dt;
+    if(this.acc<1) return;
+    const ms=this.acc/this.n*1000; this.acc=0; this.n=0;
+    if(this.hold>0) return;
+    if(ms>16.0 && this.scale>this.min){ this.scale=Math.max(this.min,this.scale*0.86); this.hold=1.2; }
+    else if(ms<11.5 && this.scale<1){ this.scale=Math.min(1,this.scale*1.10); this.hold=2.0; }
+  },
   init(){
     const cv = $('#char'); this.cv = cv;
     const gl = cv.getContext('webgl2',{antialias:false,alpha:true,premultipliedAlpha:true});
@@ -485,7 +496,7 @@ const GL = {
   fit(){
     if(!this.ok) return;
     const cv=this.cv, w=cv.clientWidth||360;
-    const d=window.__dpr||Math.min(1.5, window.devicePixelRatio||1);
+    const d=(window.__dpr||Math.min(this.cap, window.devicePixelRatio||1))*this.scale;
     const W=Math.round(w*d), H=Math.round(w*.75*d);
     if(cv.width!==W||cv.height!==H){ cv.width=W; cv.height=H; this.gl.viewport(0,0,W,H); }
   },
@@ -695,7 +706,7 @@ function rr(c,x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.lineTo(x+w-r,y);c.quadr
   c.lineTo(x,y+r);c.quadraticCurveTo(x,y,x+r,y);c.closePath();}
 
 function fitCanvas(cv){
-  const d=window.__dpr||Math.min(2,window.devicePixelRatio||1), w=cv.clientWidth||360;
+  const d=window.__dpr||Math.min(1.5,window.devicePixelRatio||1), w=cv.clientWidth||360;
   const W=Math.round(w*d), H=Math.round(w*.75*d);
   if(cv.width!==W||cv.height!==H){cv.width=W;cv.height=H;}
   const c=cv.getContext('2d'); c.setTransform(W/CW,0,0,W/CW,0,0); return c;
@@ -878,6 +889,7 @@ function frame(ms){
   const dt=Math.min(.05,(ms-last)/1000||0); last=ms; pt+=dt;
   const playing=!$('#play').hidden;
   if(playing){
+    GL.tune(dt);
     step(dt);
     GL.render(S.t, Y[S.id].i, glPose(), S.amt, S.mood/100);
     drawFG($('#fg').getContext('2d'));

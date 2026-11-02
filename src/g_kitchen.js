@@ -6,7 +6,7 @@ function rr(c,x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.lineTo(x+w-r,y);c.quadr
   c.lineTo(x,y+r);c.quadraticCurveTo(x,y,x+r,y);c.closePath();}
 
 function fitCanvas(cv){
-  const d=window.__dpr||Math.min(2,window.devicePixelRatio||1), w=cv.clientWidth||360;
+  const d=window.__dpr||Math.min(1.5,window.devicePixelRatio||1), w=cv.clientWidth||360;
   const W=Math.round(w*d), H=Math.round(w*.75*d);
   if(cv.width!==W||cv.height!==H){cv.width=W;cv.height=H;}
   const c=cv.getContext('2d'); c.setTransform(W/CW,0,0,W/CW,0,0); return c;
