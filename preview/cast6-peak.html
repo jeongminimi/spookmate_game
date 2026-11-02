@@ -131,8 +131,20 @@ vec2 mapUrong(vec3 p){
   /* 머리 — 부끄러우면 껍데기 쪽으로 */
   vec3 hp=vec3(-.12,.86-shy*.14,.12-shy*.13);
   float hd=sdEll(q-hp,vec3(.235,.26,.225));
-  hd=smin(hd,sdCap(q,vec3(0.,.60,.07),hp,.105),.09);
+  hd=smin(hd,sdCap(q,vec3(-.09,.60,.07),hp,.100),.09);
   if(hd<r.x)r=vec2(hd,2.);
+  /* 내리깐 눈 — 수치라 정면을 못 본다 */
+  float ew=min(sdEll(q-hp-vec3(-.088,.020,.182),vec3(.060,.046,.045)),
+               sdEll(q-hp-vec3( .088,.020,.182),vec3(.060,.046,.045)));
+  if(ew<r.x)r=vec2(ew,5.);
+  float pu=min(length(q-hp-vec3(-.086,-.002,.222))-.029,
+               length(q-hp-vec3( .086,-.002,.222))-.029);
+  if(pu<r.x)r=vec2(pu,6.);
+  float br=min(sdBox(rotZ(q-hp-vec3(-.092,.094,.198),.22),vec3(.056,.010,.014),.006),
+               sdBox(rotZ(q-hp-vec3( .092,.094,.198),-.22),vec3(.056,.010,.014),.006));
+  if(br<r.x)r=vec2(br,6.);
+  float mo=sdEll(q-hp-vec3(0.,-.128,.205),vec3(.034,.016,.035));
+  if(mo<r.x)r=vec2(mo,6.);
   /* 머리카락 — 쪽진 머리 */
   float ha=sdEll(q-hp-vec3(0.,.07,-.03),vec3(.245,.21,.235));
   ha=max(ha,-(q.z-hp.z-.02));
@@ -314,6 +326,13 @@ vec2 mapKappa(vec3 p){
   float ey=min(sdEll(q-hp-vec3(-.125,.055,.235),vec3(.080,.090,.055)),
                sdEll(q-hp-vec3( .125,.055,.235),vec3(.080,.090,.055)));
   if(ey<r.x)r=vec2(ey,3.);
+  /* 큰 눈동자 — 기쁨이라 정면을 똑바로 본다 */
+  float pu=min(length(q-hp-vec3(-.122,.052,.285))-.044,
+               length(q-hp-vec3( .122,.052,.285))-.044);
+  if(pu<r.x)r=vec2(pu,6.);
+  float gl2=min(length(q-hp-vec3(-.100,.082,.312))-.018,
+                length(q-hp-vec3( .144,.082,.312))-.018);
+  if(gl2<r.x)r=vec2(gl2,3.);
   /* 물갈퀴 팔다리 */
   float lb=1e9;
   for(int s=0;s<2;s++){ float sx=s==0?-1.:1.;
@@ -351,6 +370,14 @@ vec2 mapAka(vec3 p){
   float ey=min(sdEll(q-hp-vec3(-.145,.045,.265),vec3(.078,.062,.05)),
                sdEll(q-hp-vec3( .145,.045,.265),vec3(.078,.062,.05)));
   if(ey<r.x)r=vec2(ey,3.);
+  /* 눈동자를 아래로 몰아 깔보는 눈으로 */
+  float pu=min(length(q-hp-vec3(-.138,.018,.305))-.033,
+               length(q-hp-vec3( .138,.018,.305))-.033);
+  if(pu<r.x)r=vec2(pu,4.);
+  /* 처진 눈꺼풀 */
+  float ld=min(sdBox(rotZ(q-hp-vec3(-.146,.086,.292),-.16),vec3(.080,.020,.022),.010),
+               sdBox(rotZ(q-hp-vec3( .146,.086,.292), .16),vec3(.080,.020,.022),.010));
+  if(ld<r.x)r=vec2(ld,0.);
   /* 긴 손가락 — 바닥을 짚는다 */
   float am=1e9;
   for(int s=0;s<2;s++){ float sx=s==0?-1.:1.;
@@ -379,7 +406,9 @@ const PAL=`vec3 palette(float m){
     if(m<1.5)return vec3(.58,.70,.62);
     if(m<2.5)return vec3(.86,.84,.78);
     if(m<3.5)return vec3(.10,.09,.12);
-    return vec3(.30,.26,.30); }
+    if(m<4.5)return vec3(.30,.26,.30);
+    if(m<5.5)return vec3(.97,.96,.92);
+    return vec3(.09,.07,.11); }
   if(gC==1){                                    /* 어둑시니 — 거의 검정 */
     if(m<2.5) return vec3(.045,.035,.070);
     return vec3(.90,.92,.98); }
@@ -399,7 +428,8 @@ const PAL=`vec3 palette(float m){
     if(m<2.5)return vec3(.42,.66,.38);
     if(m<3.5)return vec3(.97,.96,.90);
     if(m<4.5)return vec3(.92,.76,.24);
-    return vec3(.42,.72,.86); }
+    if(m<5.5)return vec3(.42,.72,.86);
+    return vec3(.07,.09,.11); }
   if(m<.5) return vec3(.56,.62,.34);            /* 아카나메 — 기름기 도는 녹갈색 */
   if(m<1.5)return vec3(.40,.44,.24);
   if(m<2.5)return vec3(.56,.62,.34);
