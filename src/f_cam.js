@@ -17,6 +17,22 @@ const Snd={on:true,ctx:null,
   praise(){this.t(520,.1,'sine',.05,760);},
   alert(r){this.t(r?440:300,.1,'square',.045);},
   crash(){this.t(90,.4,'sawtooth',.09,50);this.t(260,.25,'square',.04,70);},
+  /* 두 겹으로 깨진다 — 둔탁한 충격이 먼저, 사기 조각이 뒤따른다 */
+  smash(){ this.t(70,.26,'sawtooth',.11,40); this.t(190,.14,'square',.06,95);
+    if(!this.on||!this.ctx) return;
+    for(let i=0;i<5;i++) setTimeout(()=>this.t(900+Math.random()*1500,.07,'triangle',.028),70+i*55+Math.random()*40); },
+  /* 어둑시니가 커질 때 깔리는 저주파. 켜고 끄는 걸 반드시 짝지어야 한다 */
+  hum:null,
+  humOn(){ if(!this.on||!this.ctx||this.hum) return;
+    try{const c=this.ctx,g=c.createGain(),o=c.createOscillator(),o2=c.createOscillator();
+      o.type='sine';o.frequency.value=47; o2.type='sine';o2.frequency.value=70.5;
+      g.gain.value=0; o.connect(g);o2.connect(g);g.connect(c.destination);
+      o.start();o2.start(); this.hum={o,o2,g};}catch(e){} },
+  humSet(v){ if(!this.hum)return;
+    try{this.hum.g.gain.setTargetAtTime(Math.max(0,Math.min(1,v))*.06,this.ctx.currentTime,.3);}catch(e){} },
+  humOff(){ const h=this.hum; this.hum=null; if(!h)return;
+    try{h.g.gain.setTargetAtTime(0,this.ctx.currentTime,.12);
+      setTimeout(()=>{try{h.o.stop();h.o2.stop();h.g.disconnect();}catch(e){}},400);}catch(e){} },
   splash(){this.t(300,.5,'sine',.06,110);}};
 const buzz=p=>{try{navigator.vibrate&&navigator.vibrate(p);}catch(e){}};
 
@@ -27,7 +43,7 @@ const S={ id:'yacha', spec:null, L:null, on:false,
   praiseRun:0, scoldRun:0, cdW:0, cdP:0, strikeNeed:0,
   ask:null, askT:0, askMax:0, nextAsk:0, askHit:0, askMiss:0, recv:1, x:0, spill:0,
   lastBtn:'', btnRun:0,
-  shake:0, flash:0, flashCol:'#fff', water:.3, parts:[], clips:[], over:false, sayT:0, amt:0 };
+  shake:0, flash:0, flashCol:'#fff', water:.3, parts:[], lens:[], clips:[], over:false, sayT:0, amt:0 };
 
 const DAY=180;           /* 한 판 = 3분. 이게 없으면 잘하는 사람은 영원히 안 끝난다 */
 const rampW=()=>clamp(1-S.t/250,.38,1);
@@ -84,9 +100,27 @@ let bubT=0,subT=0;
 function say(x,ms){const b=$('#bubble');b.textContent=x;b.classList.add('on');clearTimeout(bubT);bubT=setTimeout(()=>b.classList.remove('on'),ms||2600);}
 function me(x){const s=$('#subt');s.textContent='🔊 나 · '+x;s.classList.add('on');clearTimeout(subT);subT=setTimeout(()=>s.classList.remove('on'),1500);}
 function fx(c,sh){S.flash=1;S.flashCol=c;S.shake=sh||10;}
-function puff(x,y,n,col,spd){for(let i=0;i<n;i++){const a=Math.random()*6.283,v=(spd||120)*(.3+Math.random());
+function puff(x,y,n,col,spd,k){for(let i=0;i<n;i++){const a=Math.random()*6.283,v=(spd||120)*(.3+Math.random());
   S.parts.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-50,g:540,life:.5+Math.random()*.6,m:1.1,
-    col:Array.isArray(col)?col[i%col.length]:col,r:2.5+Math.random()*4});}}
+    col:Array.isArray(col)?col[i%col.length]:col,r:2.5+Math.random()*4,
+    k:k||'dot',rot:Math.random()*6.283,spin:(Math.random()-.5)*14,w:.45+Math.random()*.9});}}
+
+/* 렌즈에 맺히는 것들 — 펫캠이라 카메라 유리가 반응한다 */
+function lensCrack(x,y,n){
+  for(let i=0;i<n;i++){
+    /* 한 점에서 방사형으로 뻗되 짧게. 길면 유리 균열이 아니라 실처럼 보인다 */
+    const a=(i/n)*6.283+Math.random()*.7, pts=[[x,y]]; let px=x,py=y,ang=a;
+    const segs=2+Math.floor(Math.random()*2);
+    for(let j=0;j<segs;j++){
+      ang+=(Math.random()-.5)*.55;
+      const L=(11+Math.random()*17)*(1-j*.3);
+      px+=Math.cos(ang)*L; py=clamp(py+Math.sin(ang)*L,8,244);   /* HUD 띠를 안 넘는다 */
+      pts.push([px,py]);
+    }
+    S.lens.push({k:'crack',pts,w:.7+Math.random()*.9,life:1.3+Math.random()*.5,m:1.9});
+  }
+  S.lens.push({k:'hit',x,y,r:7+Math.random()*4,life:.9,m:1.1});
+}
 
 function toClip(k){const m=Math.floor(S.t/60),s=Math.floor(S.t%60);
   S.clips.push({tc:`19:${String(40+m).padStart(2,'0')}:${String(s).padStart(2,'0')}`,kind:k,txt:k==='R'?'그릇 파손':'싱크대 범람'});}
@@ -94,10 +128,21 @@ function toClip(k){const m=Math.floor(S.t/60),s=Math.floor(S.t%60);
 function enterWarn(){S.ask=null;S.st='warn';S.warnKind=Math.random()<S.spec.red?'R':'B';S.warnMax=S.warnT=warnDur();
   say(pick(S.warnKind==='R'?S.L.warnR:S.L.warnB));Snd.alert(S.warnKind==='R');buzz(25);}
 function accident(k){S.st='acc';S.stT=1.25;S.lives--;S.mood=clamp(S.mood-10,0,100);toClip(k);
-  if(k==='R'){puff(200,214,22,['#f2ead6','#cdbfa0','#fff'],190);fx('#ff4d5e',16);Snd.crash();}
-  else{S.water=1.25;puff(200,206,18,['#9ad4ff','#d8f0ff'],150);fx('#6fc3ff',12);Snd.splash();}
+  if(k==='R'){
+    if(S.id==='yacha'){
+      /* 야차 — 파편이 회전하며 날고 렌즈에 금이 간다 */
+      puff(200,212,26,['#f2ead6','#cdbfa0','#fff','#e4d8bc'],250,'shard');
+      puff(200,214,10,['#fff8e8'],120);
+      lensCrack(200,204,7); fx('#ff4d5e',24); Snd.smash();
+    } else if(S.id==='eodook'){
+      /* 어둑시니 — 몸이 휘저어 깬다. 어둠이 한 번 덮친다 */
+      puff(200,214,18,['#e8e0d0','#bdb3a4'],170,'shard');
+      fx('#140b1f',18); Snd.smash();
+    } else { puff(200,214,22,['#f2ead6','#cdbfa0','#fff'],190,'shard');fx('#ff4d5e',16);Snd.crash(); }
+  }
+  else{S.water=1.25;puff(200,206,18,['#9ad4ff','#d8f0ff'],150,'drop');fx('#6fc3ff',12);Snd.splash();}
   say(pick(k==='R'?S.L.accR:S.L.accB));buzz([50,40,90]);}
-function endDay(reason){if(S.over)return;S.over=true;S.on=false;showResult(reason);}
+function endDay(reason){if(S.over)return;S.over=true;S.on=false;Snd.humOff();showResult(reason);}
 
 function startDay(id){
   S.id=id;S.spec=SPEC[id];S.L=LINE[id];
@@ -105,7 +150,8 @@ function startDay(id){
   S.praiseRun=0;S.scoldRun=0;S.cdW=0;S.cdP=0;S.shake=0;S.flash=0;S.water=.3;
   S.parts=[];S.clips=[];S.over=false;S.sayT=3;S.amt=0;
   S.ask=null;S.askT=0;S.askHit=0;S.askMiss=0;S.lastBtn='';S.btnRun=0;S.recv=1;
-  S.x=S.spec.x? S.spec.x0 : 0; S.spill=0;
+  S.x=S.spec.x? S.spec.x0 : 0; S.spill=0; S.lens=[];
+  Snd.humOff();
   schedIdle();schedDown();schedAsk();S.nextWarn=S.t+rnd(3.5,5.5);
   document.documentElement.style.setProperty('--yc',Y[id].c);
   $('#camWho').textContent=`${Y[id].name} · ${Y[id].emo}`;
@@ -115,6 +161,7 @@ function startDay(id){
   $('#camSlot').appendChild($('#char'));
   $('#char').style.display='block';
   Snd.wake();
+  if(id==='eodook') Snd.humOn();   /* 오디오를 깨운 뒤라야 켜진다 */
   layout(); drawBG($('#bgc').getContext('2d'));
   S.on=true; say(pick(S.L.work)); scrollTo(0,0);
 }
@@ -136,7 +183,10 @@ function step(dt){
     if(S.x>=S.spec.xHigh&&S.st!=='acc'){ S.x=1.35; accident('R'); }
   }
   S.shake=Math.max(0,S.shake-dt*36);S.flash=Math.max(0,S.flash-dt*2.6);S.sayT-=dt;
-  for(let i=S.parts.length-1;i>=0;i--){const p=S.parts[i];p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=p.g*dt;p.life-=dt;if(p.life<=0)S.parts.splice(i,1);}
+  for(let i=S.parts.length-1;i>=0;i--){const p=S.parts[i];p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=p.g*dt;
+    if(p.spin)p.rot+=p.spin*dt; p.life-=dt;if(p.life<=0)S.parts.splice(i,1);}
+  for(let i=S.lens.length-1;i>=0;i--){S.lens[i].life-=dt;if(S.lens[i].life<=0)S.lens.splice(i,1);}
+  if(S.id==='eodook') Snd.humSet(clamp((S.x-1)/(S.spec.xHigh-1),0,1)*.9);
 
   if(S.ask){ S.askT-=dt; if(S.askT<=0) closeAsk('late'); }
 

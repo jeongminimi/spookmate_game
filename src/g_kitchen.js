@@ -78,7 +78,21 @@ function drawFG(c){
   c.fillText('쌓인 그릇',54,228); c.fillText('건조대',338,228);
 
   /* 거품 */
-  S.parts.forEach(p=>{c.globalAlpha=clamp(p.life/p.m,0,1);c.fillStyle=p.col;c.beginPath();c.arc(p.x,p.y,p.r,0,7);c.fill();});
+  S.parts.forEach(p=>{
+    c.globalAlpha=clamp(p.life/p.m,0,1); c.fillStyle=p.col;
+    if(p.k==='shard'){
+      /* 사기 조각 — 회전하는 삼각형. 동그라미면 '깨졌다'가 아니라 '뿜었다'로 보인다 */
+      c.save(); c.translate(p.x,p.y); c.rotate(p.rot||0);
+      const a=p.r*1.5, b=p.r*(p.w||.7);
+      c.beginPath(); c.moveTo(-a*.5,-b); c.lineTo(a,0); c.lineTo(-a*.6,b*.85); c.closePath(); c.fill();
+      c.restore();
+    } else if(p.k==='drop'){
+      c.save(); c.translate(p.x,p.y);
+      c.rotate(Math.atan2(p.vy,p.vx)+1.5708);
+      c.beginPath(); c.ellipse(0,0,p.r*.62,p.r*1.35,0,0,7); c.fill();
+      c.restore();
+    } else { c.beginPath(); c.arc(p.x,p.y,p.r,0,7); c.fill(); }
+  });
   c.globalAlpha=1;
 
   /* 전조 테두리 */
@@ -141,12 +155,45 @@ function drawFG(c){
     c.beginPath();c.ellipse(x,291,8,6,0,0,7);c.fill();
     if(!al){c.strokeStyle='#ff6b60';c.lineWidth=2;c.beginPath();c.moveTo(x-6,286);c.lineTo(x+5,297);c.moveTo(x+5,286);c.lineTo(x-6,297);c.stroke();}}
 
+  /* 렌즈에 맺힌 것 — 카메라 유리 쪽이라 흔들림 밖에 그린다 */
+  if(S.lens.length){
+    S.lens.forEach(L=>{
+      const a=clamp(L.life/L.m,0,1);
+      if(L.k==='crack'){
+        c.lineCap='round'; c.lineJoin='round';
+        c.beginPath(); c.moveTo(L.pts[0][0],L.pts[0][1]);
+        for(let i=1;i<L.pts.length;i++) c.lineTo(L.pts[i][0],L.pts[i][1]);
+        /* 어두운 테를 깔고 밝은 심을 올려야 유리가 갈라진 것처럼 보인다 */
+        c.globalAlpha=a*.55; c.strokeStyle='rgba(10,6,16,.9)'; c.lineWidth=L.w*2.6; c.stroke();
+        c.globalAlpha=a*.92; c.strokeStyle='rgba(244,240,250,.95)'; c.lineWidth=L.w; c.stroke();
+      } else if(L.k==='hit'){
+        const g=c.createRadialGradient(L.x,L.y,0,L.x,L.y,L.r*(2.2-a));
+        g.addColorStop(0,'rgba(255,252,246,'+(a*.8).toFixed(3)+')');
+        g.addColorStop(1,'rgba(255,252,246,0)');
+        c.globalAlpha=1; c.fillStyle=g;
+        c.beginPath(); c.arc(L.x,L.y,L.r*(2.2-a),0,7); c.fill();
+      }
+    });
+    c.globalAlpha=1;
+  }
+
   /* 화면 질감 */
   c.fillStyle='rgba(0,0,0,.14)';
   for(let y=0;y<CH;y+=3) c.fillRect(0,y,CW,1);
-  const vg=c.createRadialGradient(CW/2,CH/2,CH*.34,CW/2,CH/2,CH*.86);
-  vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,'rgba(0,0,0,.5)');
+  /* 비네트 — 요괴에 따라 조여드는 정도가 다르다 */
+  let r0=CH*.34, r1=CH*.86, a1=.5, dim=0, tint=null;
+  if(S.id==='eodook'){
+    const g=clamp((S.x-1)/(S.spec.xHigh-1),0,1);
+    const pulse = g>.78 ? 1+Math.sin(S.t*9)*.07 : 1;   /* 한계 직전엔 어둠이 들썩인다 */
+    r0=CH*(.34-.31*g)*pulse; r1=CH*(.86-.20*g);
+    a1=.5+.46*g; dim=g*.30; tint=g;
+  }
+  const vg=c.createRadialGradient(CW/2,CH/2,Math.max(2,r0),CW/2,CH/2,r1);
+  vg.addColorStop(0,'rgba(0,0,0,0)'); vg.addColorStop(1,'rgba(0,0,0,'+a1.toFixed(3)+')');
   c.fillStyle=vg; c.fillRect(0,0,CW,CH);
+  /* 추가 어둠은 카메라 영역만 덮는다. HUD까지 어두워지면 게이지를 못 읽는다 */
+  if(dim>0){ c.fillStyle='rgba(6,3,12,'+dim.toFixed(3)+')'; c.fillRect(0,0,CW,252); }
+  if(tint>.45){ c.fillStyle='rgba(58,34,96,'+((tint-.45)*.20).toFixed(3)+')'; c.fillRect(0,0,CW,252); }
   if(S.flash>0){c.globalAlpha=S.flash*.45;c.fillStyle=S.flashCol;c.fillRect(0,0,CW,CH);c.globalAlpha=1;}
   c.restore();
 }

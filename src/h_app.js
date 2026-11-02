@@ -112,5 +112,5 @@ addEventListener('resize',()=>{layout();if(!$('#play').hidden)drawBG($('#bgc').g
 renderPick();
 requestAnimationFrame(frame);
 /* 밸런스 자동 측정용 고리 — 봇이 렌더링 없이 로직만 돌린다 */
-window.__t={startDay,step,doWarn,doPraise,S,GL};
+window.__t={startDay,step,doWarn,doPraise,S,GL,Snd};
 })();
