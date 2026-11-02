@@ -47,7 +47,7 @@ const S={ id:'yacha', spec:null, L:null, on:false,
   praiseRun:0, scoldRun:0, cdW:0, cdP:0, strikeNeed:0,
   ask:null, askT:0, askMax:0, nextAsk:0, askHit:0, askMiss:0, recv:1, x:0, spill:0,
   lastBtn:'', btnRun:0,
-  shake:0, flash:0, flashCol:'#fff', water:.3, parts:[], lens:[], clips:[], over:false, sayT:0, amt:0 };
+  shake:0, flash:0, flashCol:'#fff', water:.3, parts:[], lens:[], clips:[], over:false, sayT:0, amt:0, freeze:0 };
 
 const DAY=180;           /* 한 판 = 3분. 이게 없으면 잘하는 사람은 영원히 안 끝난다 */
 const rampW=()=>clamp(1-S.t/250,.38,1);
@@ -156,12 +156,19 @@ function accident(k){S.st='acc';S.stT=1.25;S.lives--;S.mood=clamp(S.mood-10,0,10
       puff(200,214,18,['#e8e0d0','#bdb3a4'],170,'shard');
       fx('#140b1f',18); Snd.smash();
     } else { puff(200,214,22,['#f2ead6','#cdbfa0','#fff'],190,'shard');fx('#ff4d5e',16);Snd.crash(); }
+    /* 프레임을 뚫고 나온다 — 사고에만 쓴다 */
+    if(S.id==='eodook'){ BURST.fire('dark'); S.freeze=.14; }
+    else { BURST.fire('glass',200,206); S.freeze=.10; }
+    slam(); buzz([60,30,70]);
   }
   else{S.water=1.25;puff(200,206,18,['#9ad4ff','#d8f0ff'],150,'drop');fx('#6fc3ff',12);Snd.splash();
-    if(S.id==='oiwa'){ lensTears(4+Math.floor(Math.random()*3)); Snd.drip(); }
-    if(S.id==='kappa') lensDrops(5);}
+    if(S.id==='oiwa'){ lensTears(4+Math.floor(Math.random()*3)); Snd.drip();
+      BURST.fire('tears'); S.freeze=.09; }
+    else { BURST.fire('water',200,206); S.freeze=.08; }
+    if(S.id==='kappa') lensDrops(5);
+    slam(); buzz([50,30,60]);}
   say(pick(k==='R'?S.L.accR:S.L.accB));buzz([50,40,90]);}
-function endDay(reason){if(S.over)return;S.over=true;S.on=false;Snd.humOff();showResult(reason);}
+function endDay(reason){if(S.over)return;S.over=true;S.on=false;S.freeze=0;Snd.humOff();BURST.clear();showResult(reason);}
 
 function startDay(id){
   S.id=id;S.spec=SPEC[id];S.L=LINE[id];
@@ -169,7 +176,7 @@ function startDay(id){
   S.praiseRun=0;S.scoldRun=0;S.cdW=0;S.cdP=0;S.shake=0;S.flash=0;S.water=.3;
   S.parts=[];S.clips=[];S.over=false;S.sayT=3;S.amt=0;
   S.ask=null;S.askT=0;S.askHit=0;S.askMiss=0;S.lastBtn='';S.btnRun=0;S.recv=1;
-  S.x=S.spec.x? S.spec.x0 : 0; S.spill=0; S.lens=[];
+  S.x=S.spec.x? S.spec.x0 : 0; S.spill=0; S.lens=[]; S.freeze=0; BURST.clear();
   Snd.humOff();
   schedIdle();schedDown();schedAsk();S.nextWarn=S.t+rnd(3.5,5.5);
   document.documentElement.style.setProperty('--yc',Y[id].c);
@@ -196,7 +203,8 @@ function step(dt){
   if(S.spec.x==='water'){
     S.x=clamp(S.x+S.spec.xDrift*dt,0,1);
     if(S.x<=S.spec.xLow&&S.st!=='strike'&&S.st!=='acc'){
-      S.st='strike';S.strikeNeed=2;say(pick(S.L.strike));fx('#6bb8db',7);}
+      S.st='strike';S.strikeNeed=2;say(pick(S.L.strike));fx('#6bb8db',7);
+      BURST.fire('water',200,150); S.freeze=.08; slam(); }
   } else if(S.spec.x==='size'){
     S.x=Math.max(1,S.x+S.spec.xDrift*dt);
     if(S.x>=S.spec.xHigh&&S.st!=='acc'){ S.x=1.35; accident('R'); }

@@ -67,16 +67,19 @@ function frame(ms){
   const playing=!$('#play').hidden && !window.__bot;
   if(playing){
     GL.tune(dt);
-    step(dt);
+    /* 순간 정지 — 맞는 순간 멈췄다 풀려야 타격이 무겁게 느껴진다 */
+    if(S.freeze>0) S.freeze-=dt; else step(dt);
     GL.render(S.t, Y[S.id].i, glPose(), S.amt, S.mood/100, S.x);
     drawFG($('#fg').getContext('2d'));
     const w=$('#btnWarn'),p=$('#btnPraise');
     w.classList.toggle('cool',S.cdW>0);p.classList.toggle('cool',S.cdP>0);
-    $('#cdWarn').style.width=(S.cdW/1.2*100)+'%';
-    $('#cdPraise').style.width=(S.cdP/1.2*100)+'%';
+    $('#cdWarn').style.width=(S.cdW/.8*100)+'%';
+    $('#cdPraise').style.width=(S.cdP/.8*100)+'%';
   } else if(!$('#pick').hidden){
     GL.render(pt, Y[SEL].i, 0, 0, .8);
   }
+  /* 터져 나온 것들은 게임이 멈춰 있어도 끝까지 날아간다 */
+  if(BURST.c && (BURST.p.length||BURST.veil)) BURST.step(dt);
 }
 
 /* 배선 */
@@ -108,7 +111,8 @@ $('#btnCopy').addEventListener('click',copyShare);
 addEventListener('keydown',e=>{if($('#play').hidden)return;
   if(e.key==='ArrowLeft'||e.key==='1'){e.preventDefault();doWarn();}
   if(e.key==='ArrowRight'||e.key==='2'){e.preventDefault();doPraise();}});
-addEventListener('resize',()=>{layout();if(!$('#play').hidden)drawBG($('#bgc').getContext('2d'));});
+addEventListener('resize',()=>{layout();BURST.fit();if(!$('#play').hidden)drawBG($('#bgc').getContext('2d'));});
+BURST.init();
 renderPick();
 requestAnimationFrame(frame);
 /* 밸런스 자동 측정용 고리 — 봇이 렌더링 없이 로직만 돌린다 */

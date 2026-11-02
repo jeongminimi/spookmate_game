@@ -44,6 +44,16 @@ button{font:inherit;color:inherit}
 .stage{position:relative;aspect-ratio:4/3;border-radius:16px;overflow:hidden;background:#0e0b12;
   box-shadow:0 0 0 1px var(--line),0 14px 30px rgba(0,0,0,.55)}
 .stage canvas{display:block;position:absolute;inset:0;width:100%;height:100%}
+/* 화면 밖으로 터져 나오는 레이어 — 카메라 프레임 위에 덮인다 */
+#burst{position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:60;display:block}
+@keyframes shk{0%,100%{transform:translate(0,0)}
+  12%{transform:translate(-9px,5px)}26%{transform:translate(8px,-6px)}
+  44%{transform:translate(-6px,-4px)}62%{transform:translate(5px,5px)}
+  80%{transform:translate(-3px,2px)}}
+.shake{animation:shk .36s cubic-bezier(.36,.07,.19,.97)}
+@keyframes pop{0%{transform:scale(1)}16%{transform:scale(1.04)}100%{transform:scale(1)}}
+.stage.hit{animation:pop .34s ease-out;box-shadow:0 0 0 3px rgba(255,255,255,.85),0 0 48px rgba(255,120,90,.55)}
+@media (prefers-reduced-motion:reduce){.shake,.stage.hit{animation:none}}
 #char{z-index:2}
 #fg{z-index:3}
 .bubble{position:absolute;z-index:4;left:9px;right:9px;top:8px;font-size:13.5px;line-height:1.4;

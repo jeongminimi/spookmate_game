@@ -233,3 +233,102 @@ function drawFG(c){
   if(S.flash>0){c.globalAlpha=S.flash*.45;c.fillStyle=S.flashCol;c.fillRect(0,0,CW,CH);c.globalAlpha=1;}
   c.restore();
 }
+
+/* ───────── 화면 밖으로 터져 나오는 연출 ─────────
+   카메라 프레임은 overflow:hidden이라 안에서는 절대 못 넘는다.
+   그래서 화면 전체를 덮는 레이어를 따로 쓴다. 극한 상황에만 — 그릇이
+   깨지거나, 물을 쏟아 주저앉거나, 울거나, 어둠이 한계를 넘을 때만.
+   자주 쓰면 무게가 사라진다. */
+const BURST = {
+  cv:null, c:null, p:[], veil:null, w:0, h:0,
+  init(){ const e=$('#burst'); if(!e) return; this.cv=e; this.c=e.getContext('2d'); this.fit(); },
+  fit(){ if(!this.cv) return;
+    const d=Math.min(2,window.devicePixelRatio||1), w=innerWidth, h=innerHeight;
+    this.cv.width=Math.round(w*d); this.cv.height=Math.round(h*d);
+    this.c.setTransform(d,0,0,d,0,0); this.w=w; this.h=h; },
+  /* 카메라 캔버스 좌표(400×300)를 화면 좌표로 */
+  at(cx,cy){ const e=$('#camSlot');
+    if(!e) return {x:innerWidth/2,y:innerHeight*.4,s:1};
+    const r=e.getBoundingClientRect();
+    return {x:r.left+cx/400*r.width, y:r.top+cy/300*r.height, s:r.width/400}; },
+  add(n,o,sp,col,k,g,li){ for(let i=0;i<n;i++){
+    const a=rnd(0,6.283), v=sp*(.35+Math.random());
+    this.p.push({x:o.x,y:o.y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-sp*.42,g:g,
+      life:li*(.6+Math.random()*.7),m:li*1.3,r:(4+Math.random()*8)*o.s,
+      rot:rnd(0,6.283),spin:rnd(-16,16),w:.4+Math.random()*.9,
+      col:col[i%col.length],k:k}); } },
+  fire(kind,cx,cy){
+    if(!this.c) return;
+    const o=this.at(cx==null?200:cx, cy==null?210:cy);
+    if(kind==='glass'){
+      this.add(30,o,1250,['#f4ecd8','#d7c9a8','#ffffff','#e8dcc0'],'shard',1700,1.5);
+      this.add(14,o,780,['#fffaf0'],'dot',1500,.9);
+      this.veil={k:'flash',x:o.x,y:o.y,t:0,life:.42,col:'255,248,235'};
+    } else if(kind==='water'){
+      this.add(34,o,980,['#bfe6fb','#8fd0f2','#eaf7ff'],'drop',1450,1.5);
+      this.veil={k:'wash',t:0,life:.6,col:'90,170,220'};
+    } else if(kind==='tears'){
+      for(let i=0;i<22;i++) this.p.push({
+        x:rnd(0,this.w), y:rnd(-this.h*.35,-10), vx:rnd(-22,22), vy:rnd(240,560),
+        g:420, life:rnd(1.4,2.6), m:3.0, r:rnd(7,17), rot:0, spin:0, w:1,
+        col:['#cfe4fb','#a9cdf0','#e8f3ff'][i%3], k:'tear' });
+      this.veil={k:'wash',t:0,life:1.1,col:'74,110,170'};
+    } else if(kind==='dark'){
+      this.veil={k:'dark',t:0,life:1.5,col:'4,2,9'};
+    }
+  },
+  step(dt){
+    const c=this.c; if(!c) return;
+    c.clearRect(0,0,this.w,this.h);
+    if(this.veil){ const V=this.veil; V.t+=dt;
+      const u=clamp(V.t/V.life,0,1);
+      if(V.k==='flash'){
+        const R=Math.max(this.w,this.h)*(.12+u*1.25);
+        const g=c.createRadialGradient(V.x,V.y,0,V.x,V.y,R);
+        g.addColorStop(0,'rgba('+V.col+','+((1-u)*.55).toFixed(3)+')');
+        g.addColorStop(.6,'rgba('+V.col+','+((1-u)*.16).toFixed(3)+')');
+        g.addColorStop(1,'rgba('+V.col+',0)');
+        c.fillStyle=g; c.fillRect(0,0,this.w,this.h);
+      } else if(V.k==='wash'){
+        c.fillStyle='rgba('+V.col+','+((1-u)*.30).toFixed(3)+')';
+        c.fillRect(0,0,this.w,this.h);
+      } else if(V.k==='dark'){
+        /* 어둠이 가장자리에서 화면 가운데로 밀려든다 */
+        const peak=u<.3? u/.3 : 1-(u-.3)/.7;
+        const R=Math.max(this.w,this.h)*(.95-peak*.78);
+        const g=c.createRadialGradient(this.w/2,this.h*.42,Math.max(2,R*.25),this.w/2,this.h*.42,R);
+        g.addColorStop(0,'rgba('+V.col+',0)');
+        g.addColorStop(1,'rgba('+V.col+','+(peak*.96).toFixed(3)+')');
+        c.fillStyle=g; c.fillRect(0,0,this.w,this.h);
+      }
+      if(u>=1) this.veil=null;
+    }
+    for(let i=this.p.length-1;i>=0;i--){ const p=this.p[i];
+      p.x+=p.vx*dt; p.y+=p.vy*dt; p.vy+=p.g*dt; p.rot+=p.spin*dt; p.life-=dt;
+      if(p.life<=0||p.y>this.h+80){ this.p.splice(i,1); continue; }
+      c.globalAlpha=clamp(p.life/p.m,0,1); c.fillStyle=p.col;
+      if(p.k==='shard'){
+        c.save(); c.translate(p.x,p.y); c.rotate(p.rot);
+        const a=p.r*1.5,b=p.r*p.w;
+        c.beginPath(); c.moveTo(-a*.5,-b); c.lineTo(a,0); c.lineTo(-a*.6,b*.85); c.closePath(); c.fill();
+        c.restore();
+      } else if(p.k==='drop'||p.k==='tear'){
+        c.save(); c.translate(p.x,p.y); c.rotate(Math.atan2(p.vy,p.vx)+1.5708);
+        c.beginPath(); c.ellipse(0,0,p.r*.52,p.r*1.3,0,0,7); c.fill();
+        c.globalAlpha=clamp(p.life/p.m,0,1)*.9; c.fillStyle='rgba(255,255,255,.85)';
+        c.beginPath(); c.arc(-p.r*.16,-p.r*.42,p.r*.2,0,7); c.fill();
+        c.restore();
+      } else { c.beginPath(); c.arc(p.x,p.y,p.r*.55,0,7); c.fill(); }
+    }
+    c.globalAlpha=1;
+  },
+  clear(){ this.p.length=0; this.veil=null; if(this.c) this.c.clearRect(0,0,this.w,this.h); }
+};
+/* 프레임이 맞고, 페이지가 흔들린다 */
+function slam(){
+  const st=$('#camSlot'), wr=document.querySelector('.wrap');
+  if(st){ st.classList.remove('hit'); void st.offsetWidth; st.classList.add('hit');
+    setTimeout(()=>st.classList.remove('hit'),360); }
+  if(wr){ wr.classList.remove('shake'); void wr.offsetWidth; wr.classList.add('shake');
+    setTimeout(()=>wr.classList.remove('shake'),380); }
+}
