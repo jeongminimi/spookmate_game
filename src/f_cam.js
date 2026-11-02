@@ -33,7 +33,11 @@ const Snd={on:true,ctx:null,
   humOff(){ const h=this.hum; this.hum=null; if(!h)return;
     try{h.g.gain.setTargetAtTime(0,this.ctx.currentTime,.12);
       setTimeout(()=>{try{h.o.stop();h.o2.stop();h.g.disconnect();}catch(e){}},400);}catch(e){} },
-  splash(){this.t(300,.5,'sine',.06,110);}};
+  splash(){this.t(300,.5,'sine',.06,110);},
+  /* 카파가 물을 쏟을 때 — 짧고 밝게 */
+  plop(){ this.t(620,.14,'sine',.055,240); this.t(1180,.08,'triangle',.03,700); },
+  /* 오이와의 눈물 — 한 방울 */
+  drip(){ this.t(840,.16,'sine',.035,300); }};
 const buzz=p=>{try{navigator.vibrate&&navigator.vibrate(p);}catch(e){}};
 
 const S={ id:'yacha', spec:null, L:null, on:false,
@@ -61,7 +65,8 @@ const speedMul=()=>{
 function bumpX(key){
   if(!S.spec.x) return;
   const d=S.spec[key]||0;
-  if(S.spec.x==='water'){ if(d<0) S.spill=1; S.x=clamp(S.x+d,0,1); }
+  if(S.spec.x==='water'){ if(d<0){ S.spill=1; lensDrops(3+Math.floor(Math.random()*4)); Snd.plop(); }
+    S.x=clamp(S.x+d,0,1); }
   else S.x=clamp(S.x+d,1,2.8);
 }
 const schedAsk=()=>{S.nextAsk=S.t+rnd(S.spec.ask[0],S.spec.ask[1]);};
@@ -121,6 +126,18 @@ function lensCrack(x,y,n){
   }
   S.lens.push({k:'hit',x,y,r:7+Math.random()*4,life:.9,m:1.1});
 }
+/* 렌즈에 맺힌 물방울 — 카메라 유리에 튄 물. 천천히 흘러내린다 */
+function lensDrops(n){
+  for(let i=0;i<n;i++)
+    S.lens.push({k:'wdrop',x:rnd(26,374),y:rnd(22,200),r:rnd(5.5,13),
+                 vy:rnd(4,11),trail:0,life:rnd(2.8,4.6),m:4.8});
+}
+/* 눈물 자국 — 물방울보다 느리고 자국이 길게 남는다 */
+function lensTears(n){
+  for(let i=0;i<n;i++)
+    S.lens.push({k:'tear',x:rnd(60,340),y:rnd(18,80),r:rnd(4.5,8),
+                 vy:rnd(8,17),trail:0,life:rnd(3.6,5.2),m:5.4});
+}
 
 function toClip(k){const m=Math.floor(S.t/60),s=Math.floor(S.t%60);
   S.clips.push({tc:`19:${String(40+m).padStart(2,'0')}:${String(s).padStart(2,'0')}`,kind:k,txt:k==='R'?'그릇 파손':'싱크대 범람'});}
@@ -140,7 +157,9 @@ function accident(k){S.st='acc';S.stT=1.25;S.lives--;S.mood=clamp(S.mood-10,0,10
       fx('#140b1f',18); Snd.smash();
     } else { puff(200,214,22,['#f2ead6','#cdbfa0','#fff'],190,'shard');fx('#ff4d5e',16);Snd.crash(); }
   }
-  else{S.water=1.25;puff(200,206,18,['#9ad4ff','#d8f0ff'],150,'drop');fx('#6fc3ff',12);Snd.splash();}
+  else{S.water=1.25;puff(200,206,18,['#9ad4ff','#d8f0ff'],150,'drop');fx('#6fc3ff',12);Snd.splash();
+    if(S.id==='oiwa'){ lensTears(4+Math.floor(Math.random()*3)); Snd.drip(); }
+    if(S.id==='kappa') lensDrops(5);}
   say(pick(k==='R'?S.L.accR:S.L.accB));buzz([50,40,90]);}
 function endDay(reason){if(S.over)return;S.over=true;S.on=false;Snd.humOff();showResult(reason);}
 
@@ -185,7 +204,9 @@ function step(dt){
   S.shake=Math.max(0,S.shake-dt*36);S.flash=Math.max(0,S.flash-dt*2.6);S.sayT-=dt;
   for(let i=S.parts.length-1;i>=0;i--){const p=S.parts[i];p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=p.g*dt;
     if(p.spin)p.rot+=p.spin*dt; p.life-=dt;if(p.life<=0)S.parts.splice(i,1);}
-  for(let i=S.lens.length-1;i>=0;i--){S.lens[i].life-=dt;if(S.lens[i].life<=0)S.lens.splice(i,1);}
+  for(let i=S.lens.length-1;i>=0;i--){ const L=S.lens[i];
+    if(L.vy){ L.y+=L.vy*dt; L.trail=Math.min(80,L.trail+L.vy*dt); L.vy+=16*dt; }
+    L.life-=dt; if(L.life<=0)S.lens.splice(i,1); }
   if(S.id==='eodook') Snd.humSet(clamp((S.x-1)/(S.spec.xHigh-1),0,1)*.9);
 
   if(S.ask){ S.askT-=dt; if(S.askT<=0) closeAsk('late'); }

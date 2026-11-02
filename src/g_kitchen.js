@@ -106,6 +106,19 @@ function drawFG(c){
     c.globalAlpha=p*.72; c.strokeStyle='#ffd23f'; c.lineWidth=4; c.strokeRect(2.5,2.5,CW-5,CH-5); c.globalAlpha=1;
   }
 
+  /* 오이와의 초롱 — 광원이 캐릭터라 주방까지 비춘다. 의욕이 꺼지면 빛도 꺼진다 */
+  if(S.id==='oiwa'){
+    const lit=clamp(S.mood/100,0,1);
+    const fl=.84+.16*Math.sin(S.t*17)*Math.sin(S.t*7.3);
+    const g=c.createRadialGradient(200,104,10,200,104,180);
+    g.addColorStop(0,'rgba(255,214,122,'+(.34*lit*fl).toFixed(3)+')');
+    g.addColorStop(.55,'rgba(255,196,96,'+(.12*lit*fl).toFixed(3)+')');
+    g.addColorStop(1,'rgba(255,190,90,0)');
+    c.save(); c.beginPath(); c.rect(0,0,CW,252); c.clip();
+    c.globalCompositeOperation='lighter'; c.fillStyle=g; c.fillRect(0,0,CW,252);
+    c.restore();
+  }
+
   /* CCTV 띠 */
   c.fillStyle='rgba(16,10,22,.78)'; c.fillRect(0,252,CW,CH-252);
   c.fillStyle='rgba(255,255,255,.12)'; c.fillRect(0,252,CW,1);
@@ -166,6 +179,21 @@ function drawFG(c){
         /* 어두운 테를 깔고 밝은 심을 올려야 유리가 갈라진 것처럼 보인다 */
         c.globalAlpha=a*.55; c.strokeStyle='rgba(10,6,16,.9)'; c.lineWidth=L.w*2.6; c.stroke();
         c.globalAlpha=a*.92; c.strokeStyle='rgba(244,240,250,.95)'; c.lineWidth=L.w; c.stroke();
+      } else if(L.k==='wdrop'||L.k==='tear'){
+        const tear=L.k==='tear';
+        if(L.trail>2){                                  /* 흘러내린 자국 */
+          c.globalAlpha=a*(tear?.34:.27);
+          c.fillStyle=tear?'rgba(206,224,248,.9)':'rgba(190,226,246,.9)';
+          c.beginPath(); c.ellipse(L.x,L.y-L.trail/2,L.r*.40,L.trail/2,0,0,7); c.fill();
+        }
+        /* 어두운 테 → 맺힌 물 → 흰 점. 테가 없으면 배경에 묻힌다 */
+        c.globalAlpha=a*.45; c.fillStyle='rgba(14,20,34,.9)';
+        c.beginPath(); c.ellipse(L.x,L.y+L.r*.10,L.r*.95,L.r*1.26,0,0,7); c.fill();
+        c.globalAlpha=a*(tear?.88:.80);
+        c.fillStyle=tear?'rgba(218,234,252,.97)':'rgba(206,238,252,.97)';
+        c.beginPath(); c.ellipse(L.x,L.y,L.r*.80,L.r*1.10,0,0,7); c.fill();
+        c.globalAlpha=a*.95; c.fillStyle='rgba(255,255,255,.95)';
+        c.beginPath(); c.ellipse(L.x-L.r*.28,L.y-L.r*.40,L.r*.30,L.r*.22,-.5,0,7); c.fill();
       } else if(L.k==='hit'){
         const g=c.createRadialGradient(L.x,L.y,0,L.x,L.y,L.r*(2.2-a));
         g.addColorStop(0,'rgba(255,252,246,'+(a*.8).toFixed(3)+')');
@@ -181,8 +209,15 @@ function drawFG(c){
   c.fillStyle='rgba(0,0,0,.14)';
   for(let y=0;y<CH;y+=3) c.fillRect(0,y,CW,1);
   /* 비네트 — 요괴에 따라 조여드는 정도가 다르다 */
-  let r0=CH*.34, r1=CH*.86, a1=.5, dim=0, tint=null;
-  if(S.id==='eodook'){
+  let r0=CH*.34, r1=CH*.86, a1=.5, dim=0, tint=null, wash=null;
+  if(S.id==='kappa'){
+    /* 물이 마르면 색이 빠진다. 게이지를 안 봐도 상태가 보인다 */
+    const dry=1-clamp(S.x,0,1);
+    if(dry>.04) wash=['188,196,204',dry*.30];
+  } else if(S.id==='oiwa'){
+    const lit=clamp(S.mood/100,0,1);
+    dim=(1-lit)*.30; wash=['64,80,116',(1-lit)*.15];
+  } else if(S.id==='eodook'){
     const g=clamp((S.x-1)/(S.spec.xHigh-1),0,1);
     const pulse = g>.78 ? 1+Math.sin(S.t*9)*.07 : 1;   /* 한계 직전엔 어둠이 들썩인다 */
     r0=CH*(.34-.31*g)*pulse; r1=CH*(.86-.20*g);
@@ -194,6 +229,7 @@ function drawFG(c){
   /* 추가 어둠은 카메라 영역만 덮는다. HUD까지 어두워지면 게이지를 못 읽는다 */
   if(dim>0){ c.fillStyle='rgba(6,3,12,'+dim.toFixed(3)+')'; c.fillRect(0,0,CW,252); }
   if(tint>.45){ c.fillStyle='rgba(58,34,96,'+((tint-.45)*.20).toFixed(3)+')'; c.fillRect(0,0,CW,252); }
+  if(wash&&wash[1]>.004){ c.fillStyle='rgba('+wash[0]+','+wash[1].toFixed(3)+')'; c.fillRect(0,0,CW,252); }
   if(S.flash>0){c.globalAlpha=S.flash*.45;c.fillStyle=S.flashCol;c.fillRect(0,0,CW,CH);c.globalAlpha=1;}
   c.restore();
 }
