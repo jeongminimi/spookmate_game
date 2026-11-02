@@ -117,6 +117,16 @@ function drawFG(c){
     c.fillStyle='rgba(0,0,0,.5)'; rr(c,12,270,116,9,5); c.fill();
     c.fillStyle=S.mood>55?'#8fe8ae':S.mood>25?'#ffd23f':'#ff6b60';
     rr(c,12,270,Math.max(3,116*S.mood/100),9,5); c.fill();
+    /* 요괴 고유 게이지 — 카파는 접시 물, 어둑시니는 몸집 */
+    if(S.spec.x){
+      const water=S.spec.x==='water';
+      const v=water? clamp(S.x,0,1) : clamp((S.x-1)/(S.spec.xHigh-1),0,1);
+      c.textAlign='center'; c.fillStyle='rgba(255,245,224,.88)';
+      c.fillText(water?'접시 물':'몸집',200,266);
+      c.fillStyle='rgba(0,0,0,.5)'; rr(c,142,270,116,9,5); c.fill();
+      c.fillStyle=water? (v>.35?'#6bb8db':'#ff8a3d') : (v<.62?'#a98fd8':'#ff6b60');
+      rr(c,142,270,Math.max(3,116*v),9,5); c.fill();
+    }
     c.textAlign='right'; c.fillStyle='rgba(255,245,224,.88)'; c.fillText('설거지',388,266);
     c.fillStyle='rgba(0,0,0,.5)'; rr(c,272,270,116,9,5); c.fill();
     c.fillStyle=Y[S.id].c; rr(c,272,270,Math.max(3,116*clamp(S.prog,0,1)),9,5); c.fill();

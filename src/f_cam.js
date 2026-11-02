@@ -25,7 +25,7 @@ const S={ id:'yacha', spec:null, L:null, on:false,
   warnKind:'R', warnT:0, warnMax:0, stT:0,
   nextIdle:0, nextDown:0, nextWarn:0, warnMul:1,
   praiseRun:0, scoldRun:0, cdW:0, cdP:0, strikeNeed:0,
-  ask:null, askT:0, askMax:0, nextAsk:0, askHit:0, askMiss:0, recv:1,
+  ask:null, askT:0, askMax:0, nextAsk:0, askHit:0, askMiss:0, recv:1, x:0, spill:0,
   lastBtn:'', btnRun:0,
   shake:0, flash:0, flashCol:'#fff', water:.3, parts:[], clips:[], over:false, sayT:0, amt:0 };
 
@@ -35,7 +35,19 @@ const schedIdle=()=>{S.nextIdle=S.t+rnd(S.spec.idle[0],S.spec.idle[1]);};
 const schedDown=()=>{S.nextDown=S.t+rnd(S.spec.down[0],S.spec.down[1]);};
 const schedWarn=()=>{S.nextWarn=S.t+Math.max(2.4,rnd(S.spec.warn[0],S.spec.warn[1])*S.warnMul*rampW());};
 const warnDur=()=>Math.max(.7,S.spec.warnDur*clamp(1-S.t/420,.6,1)*(.78+S.mood/450));
-const speedMul=()=>.34+.78*clamp(S.mood/100,0,1);   /* 의욕 1점이 전부 속도에 반영된다 */
+const speedMul=()=>{
+  let v=.34+.78*clamp(S.mood/100,0,1);          /* 의욕 1점이 전부 속도에 반영된다 */
+  if(S.spec.x==='water') v*=(.32+.68*clamp(S.x,0,1));      /* 물이 마르면 손이 느려진다 */
+  if(S.spec.x==='size')  v*=clamp(1.22-S.x*.26,.42,1.08);  /* 커질수록 둔해진다 */
+  return v;
+};
+/* 고유값을 움직인다. 카파는 접시 물, 어둑시니는 몸집. */
+function bumpX(key){
+  if(!S.spec.x) return;
+  const d=S.spec[key]||0;
+  if(S.spec.x==='water'){ if(d<0) S.spill=1; S.x=clamp(S.x+d,0,1); }
+  else S.x=clamp(S.x+d,1,2.8);
+}
 const schedAsk=()=>{S.nextAsk=S.t+rnd(S.spec.ask[0],S.spec.ask[1]);};
 
 /* 같은 버튼을 세 번 이어 누르면 요괴가 알아챈다.
@@ -93,6 +105,7 @@ function startDay(id){
   S.praiseRun=0;S.scoldRun=0;S.cdW=0;S.cdP=0;S.shake=0;S.flash=0;S.water=.3;
   S.parts=[];S.clips=[];S.over=false;S.sayT=3;S.amt=0;
   S.ask=null;S.askT=0;S.askHit=0;S.askMiss=0;S.lastBtn='';S.btnRun=0;S.recv=1;
+  S.x=S.spec.x? S.spec.x0 : 0; S.spill=0;
   schedIdle();schedDown();schedAsk();S.nextWarn=S.t+rnd(3.5,5.5);
   document.documentElement.style.setProperty('--yc',Y[id].c);
   $('#camWho').textContent=`${Y[id].name} · ${Y[id].emo}`;
@@ -113,6 +126,15 @@ function step(dt){
   S.cdW=Math.max(0,S.cdW-dt);S.cdP=Math.max(0,S.cdP-dt);
   if(S.st!=='strike') S.mood=clamp(S.mood-dt*1.6,0,100);   /* 방치하면 꺼진다 */
   S.recv=clamp(S.recv+dt*.42,0,1.15);   /* 칭찬을 받아들일 여유가 차오른다 */
+  S.spill=Math.max(0,S.spill-dt*1.6);
+  if(S.spec.x==='water'){
+    S.x=clamp(S.x+S.spec.xDrift*dt,0,1);
+    if(S.x<=S.spec.xLow&&S.st!=='strike'&&S.st!=='acc'){
+      S.st='strike';S.strikeNeed=2;say(pick(S.L.strike));fx('#6bb8db',7);}
+  } else if(S.spec.x==='size'){
+    S.x=Math.max(1,S.x+S.spec.xDrift*dt);
+    if(S.x>=S.spec.xHigh&&S.st!=='acc'){ S.x=1.35; accident('R'); }
+  }
   S.shake=Math.max(0,S.shake-dt*36);S.flash=Math.max(0,S.flash-dt*2.6);S.sayT-=dt;
   for(let i=S.parts.length-1;i>=0;i--){const p=S.parts[i];p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=p.g*dt;p.life-=dt;if(p.life<=0)S.parts.splice(i,1);}
 
@@ -145,8 +167,14 @@ function glPose(){ return S.st==='warn'||S.st==='acc'? 2 : (S.st==='work'? 1 : 0
 function doWarn(){
   if(!S.on||S.over||S.cdW>0)return;
   S.cdW=.8;Snd.warn();me(pick(MYVOICE.warn));buzz(18);
-  if(S.ask){ tally('W'); return closeAsk(S.ask.w==='W'?'ok':'no'); }
-  tally('W');
+  if(S.ask){ tally('W'); bumpX('xScold'); return closeAsk(S.ask.w==='W'?'ok':'no'); }
+  tally('W'); bumpX('xScold');
+  /* 카파는 물이 말라 주저앉는다. 달래는 게 아니라 진정시켜야 일어난다 */
+  if(S.st==='strike'&&S.spec.x==='water'){
+    S.strikeNeed--; S.x=clamp(S.x+.22,0,1);
+    if(S.strikeNeed<=0){S.st='work';S.mood=Math.max(S.mood,28);schedWarn();schedIdle();schedDown();schedAsk();say(pick(S.L.scoldBlock));}
+    else say('…물. 물 좀.');
+    return; }
   if(S.st==='warn'){
     if(S.warnKind==='R'){S.st='work';S.water=.3;S.mood=clamp(S.mood+S.spec.scoldMood*.55,0,100);
       S.warnMul=Math.max(.45,S.warnMul*S.spec.rage);schedWarn();schedIdle();schedAsk();fx('#7dffb0',5);say(pick(S.L.scoldBlock));}
@@ -162,14 +190,15 @@ function doWarn(){
 function doPraise(){
   if(!S.on||S.over||S.cdP>0)return;
   S.cdP=.8;Snd.praise();me(pick(MYVOICE.praise));buzz(12);
-  if(S.ask){ tally('P'); return closeAsk(S.ask.w==='P'?'ok':'no'); }
-  tally('P');
+  if(S.ask){ tally('P'); bumpX('xPraise'); return closeAsk(S.ask.w==='P'?'ok':'no'); }
+  tally('P'); bumpX('xPraise');
   if(S.st==='warn'){
     if(S.warnKind==='B'){S.st='work';S.water=.3;S.mood=clamp(S.mood+S.spec.praiseMood*.7,0,100);
       schedWarn();schedDown();schedAsk();fx('#7dffb0',5);say(pick(S.L.praiseBlock));}
     else accident('R');
     return;
   }
+  if(S.st==='strike'&&S.spec.x==='water'){ say('물이… 칭찬으론 안 차.'); return; }
   if(S.st==='strike'){S.strikeNeed--;S.mood=clamp(S.mood+18,0,100);
     if(S.strikeNeed<=0){S.st='work';S.mood=Math.max(S.mood,30);schedWarn();schedIdle();schedDown();schedAsk();say(praiseLine());}
     else say('…한 번만 더 말해줘.');

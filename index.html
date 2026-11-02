@@ -182,24 +182,29 @@ button{font:inherit;color:inherit}
 <script>
 (() => {
 'use strict';
-
-/* ───────── 캐릭터 셰이더: 오이와(0) · 야차(1) ─────────
-   부엌은 2D 레이어가 그리고, 여기서는 캐릭터만 투명 배경에 그린다. */
-const CHAR_FS = `#version 300 es
+/* ───────── 캐릭터 셰이더: 요괴 하나당 프로그램 하나 ─────────
+   부엌은 2D 레이어가 그리고, 여기서는 캐릭터만 투명 배경에 그린다.
+   넷을 한 셰이더에 넣으면 map()이 노멀·그림자·AO 네 군데에 각각
+   인라인되면서 코드가 네 벌로 불어난다. 윈도우 크롬(ANGLE→D3D)은
+   거기서 컴파일이 깨진다. 그래서 고른 요괴 것만 그때 만든다. */
+const SH = {
+  head: `#version 300 es
 precision highp float;
 out vec4 O;
-uniform vec2 iR; uniform float iT; uniform int iChar; uniform int iPose;
+uniform vec2 iR; uniform float iT; uniform int iPose;
 uniform float iAmt;      /* 전조·폭주 세기 0..1 */
 uniform float iMood;     /* 의욕 0..1 — 자세와 빛에 반영 */
-
-/* 오이와 */
+uniform float iX;        /* 요괴 고유값 — 카파는 접시 물, 어둑시니는 몸집 */
+`,
+  consts: `/* 오이와 */
 const vec3 PAPER=vec3(.95,.85,.60), PINK=vec3(.055,.045,.07), HAIR=vec3(.05,.045,.07);
 const vec3 ROBE=vec3(.70,.76,.85), SKIN=vec3(.67,.73,.69), WOOD=vec3(.22,.15,.13);
 /* 야차 */
 const vec3 YSKIN=vec3(.88,.20,.13), HORN=vec3(.96,.91,.74), MANE=vec3(.16,.06,.06);
 const vec3 CLOTH=vec3(.92,.60,.16), EYEW=vec3(.96,.94,.88), YINK=vec3(.07,.04,.05);
 
-float smin(float a,float b,float k){float h=clamp(.5+.5*(b-a)/k,0.,1.);return mix(b,a,h)-k*h*(1.-h);}
+`,
+  helpers: `float smin(float a,float b,float k){float h=clamp(.5+.5*(b-a)/k,0.,1.);return mix(b,a,h)-k*h*(1.-h);}
 float smax(float a,float b,float k){return -smin(-a,-b,k);}
 vec3 rotZ(vec3 p,float a){float c=cos(a),s=sin(a);return vec3(c*p.x-s*p.y,s*p.x+c*p.y,p.z);}
 vec3 rotX(vec3 p,float a){float c=cos(a),s=sin(a);return vec3(p.x,c*p.y-s*p.z,s*p.y+c*p.z);}
@@ -213,10 +218,10 @@ float sdCone(vec3 p,vec3 a,vec3 b,float r1,float r2){
   if(sign(z)*a2*z2>k)return sqrt(x2+z2)*il2-r2;
   if(sign(y)*a2*y2<k)return sqrt(x2+y2)*il2-r1;
   return (sqrt(x2*a2*il2)+y*rr)*il2-r1;}
-
-float gSway,gScrub,gAmt,gDroop;
-
-/* ══ 오이와 ══ */
+float sdTor(vec3 p,vec2 t){vec2 q=vec2(length(p.xz)-t.x,p.y);return length(q)-t.y;}
+float gSway,gScrub,gAmt,gDroop,gX;
+`,
+  maps: [`/* ══ 오이와 ══ */
 vec2 mapOiwa(vec3 p){
   vec3 q=p;
   float tilt=gSway*.075+gDroop*.05;
@@ -275,7 +280,7 @@ vec2 mapOiwa(vec3 p){
   return r;
 }
 
-/* ══ 야차 ══ */
+`,`/* ══ 야차 ══ */
 vec2 mapYacha(vec3 p){
   vec3 q=rotX(p-vec3(0.,-.55,0.),.09+gAmt*.12)+vec3(0.,-.55,0.);
   q.y-=gSway*.012-gDroop*.05;
@@ -353,8 +358,93 @@ vec2 mapYacha(vec3 p){
   return r;
 }
 
-vec2 map(vec3 p){ return iChar==0? mapOiwa(p) : mapYacha(p); }
-vec3 nor(vec3 p){vec2 e=vec2(.0016,0);
+`,`/* ══ 카파 ══ */
+vec2 mapKappa(vec3 p){
+  float hop=abs(sin(iT*(1.9+gAmt*3.0)))*(.042+gAmt*.055);
+  vec3 q=p-vec3(0.,.06,0.); q.y-=hop; q=rotZ(q,sin(iT*1.9)*.05);
+  q.y+=gDroop*.06;
+  float bd=sdEll(q-vec3(0.,-.02,.02),vec3(.34,.33,.30));
+  bd=smin(bd,sdEll(q-vec3(0.,-.30,.02),vec3(.28,.14,.26)),.14);
+  vec2 r=vec2(bd,0.);
+  /* 등갑 — 몸보다 넓어 정면에서도 양옆으로 나온다 */
+  vec3 sq=q-vec3(0.,.02,-.13);
+  float shl=sdEll(sq,vec3(.475,.445,.335));
+  shl=max(shl,sq.z-.15);
+  float marg=sdTor(rotX(sq,1.5708),vec2(.445,.062));
+  marg=max(marg,sq.z-.15);
+  shl=smin(shl,marg,.045);
+  shl=smax(shl,-sdTor(rotX(sq-vec3(0.,0.,.02),1.5708),vec2(.295,.026)),.035);
+  for(int i=0;i<5;i++){ float a=(float(i)-2.)*1.256;
+    shl=smax(shl,-sdCap(sq,vec3(sin(a)*.07,cos(a)*.07,-.31),vec3(sin(a)*.49,cos(a)*.49,.06),.024),.035); }
+  if(shl<r.x)r=vec2(shl,1.);
+  float pla=sdEll(q-vec3(0.,-.05,.285),vec3(.225,.255,.060));
+  pla=smax(pla,-sdTor(rotX(q-vec3(0.,-.05,.30),1.5708),vec2(.165,.016)),.025);
+  if(pla<r.x)r=vec2(pla,7.);
+  vec3 hp=vec3(0.,.44,.02);
+  float hd=sdEll(q-hp,vec3(.30,.27,.28));
+  hd=smax(hd,-sdEll(q-hp-vec3(0.,.30,0.),vec3(.175,.085,.175)),.035);
+  if(hd<r.x)r=vec2(hd,0.);
+  float rim2=sdTor(q-hp-vec3(0.,.255,0.),vec2(.185,.040));
+  if(rim2<r.x)r=vec2(rim2,1.);
+  /* 접시 물 — 쏟을수록 얕아진다. 마르면 힘을 잃는다 */
+  float wl=clamp(gX,0.,1.);
+  if(wl>.03){
+    float wat=sdEll(q-hp-vec3(0.,.206+wl*.042+sin(iT*2.6)*.009*wl,0.),
+                    vec3(.170*(.58+.42*wl),.006+.026*wl,.170*(.58+.42*wl)));
+    if(wat<r.x)r=vec2(wat,5.); }
+  float bk=sdCone(q,hp+vec3(0.,-.06,.21),hp+vec3(0.,-.085,.37),.105,.045);
+  if(bk<r.x)r=vec2(bk,4.);
+  float ey=min(sdEll(q-hp-vec3(-.125,.055,.235),vec3(.080,.090,.055)),
+               sdEll(q-hp-vec3( .125,.055,.235),vec3(.080,.090,.055)));
+  if(ey<r.x)r=vec2(ey,3.);
+  float pu=min(length(q-hp-vec3(-.122,.052,.285))-.044,
+               length(q-hp-vec3( .122,.052,.285))-.044);
+  if(pu<r.x)r=vec2(pu,6.);
+  float gl2=min(length(q-hp-vec3(-.100,.082,.312))-.018,
+                length(q-hp-vec3( .144,.082,.312))-.018);
+  if(gl2<r.x)r=vec2(gl2,3.);
+  float ah=iPose==1? .00+gScrub*.09 : (iPose==2? .42 : .20);
+  float az=iPose==1? .34+gScrub*.12 : (iPose==2? .08 : .20);
+  float lb=1e9;
+  for(int s=0;s<2;s++){ float sx=s==0?-1.:1.;
+    float sw=sin(iT*1.9+float(s)*3.14)*(iPose==1? .04 : .09);
+    lb=smin(lb,sdCap(q,vec3(sx*.28,.10,.06),vec3(sx*(.44+sw*.2),ah+sw,az),.065),.05);
+    lb=smin(lb,sdEll(q-vec3(sx*(.48+sw*.2),ah+sw-.02,az+.04),vec3(.085,.09,.035)),.03);
+    lb=smin(lb,sdCap(q,vec3(sx*.17,-.36,.04),vec3(sx*.20,-.56,.08),.072),.05);
+    lb=smin(lb,sdEll(q-vec3(sx*.20,-.60,.12),vec3(.085,.035,.115)),.03); }
+  if(lb<r.x)r=vec2(lb,0.);
+  return r;
+}
+`,`/* ══ 어둑시니 ══ */
+vec2 mapEodook(vec3 p){
+  float big=max(.55,gX)*(1.+.045*sin(iT*.8));
+  vec3 q=(p-vec3(0.,.04,0.))/big;
+  q.y+=gDroop*.05;
+  float wob=(sin(q.y*5.2+iT*1.6)*.030+sin(q.y*9.1-iT*1.1)*.016)*(1.+gAmt*1.8);
+  q.x+=wob; q.z+=wob*.6;
+  float hd=sdEll(q-vec3(0.,.66,0.),vec3(.295,.315,.30));
+  float nk=sdCap(q,vec3(0.,.46,0.),vec3(0.,.34,0.),.115);
+  float bd=sdCone(q,vec3(0.,.38,0.),vec3(0.,-.34,0.),.235,.33);
+  float d=smin(smin(hd,nk,.07),bd,.12);
+  for(int i=0;i<6;i++){ float fi=float(i);
+    float a=fi*1.05-.5, R=.20+.10*sin(iT*.8+fi);
+    vec3 t0=vec3(cos(a)*R*.9,-.26,sin(a)*R*.55);
+    vec3 t1=t0+vec3(sin(iT*.9+fi)*.17,-.52-.13*sin(iT*1.2+fi),cos(iT*.7+fi)*.10);
+    d=smin(d,sdCone(q,t0,t1,.135,.022),.15); }
+  float ay=iPose==1? .00+gScrub*.11 : (iPose==2? .36 : -.14);
+  float az=iPose==1? .30+gScrub*.14 : (iPose==2? .06 : .14);
+  d=smin(d,sdCap(q,vec3(-.21,.30,.05),vec3(-.34,ay,az),.062),.09);
+  d=smin(d,sdCap(q,vec3( .21,.30,.05),vec3( .34,ay,az),.062),.09);
+  vec2 r=vec2(d*big,0.);
+  vec3 er=vec3(.062+gAmt*.052,.078+gAmt*.058,.05);
+  float ey=min(sdEll(q-vec3(-.105-gAmt*.02,.705,.265),er),
+               sdEll(q-vec3( .105+gAmt*.02,.705,.265),er));
+  if(ey*big<r.x)r=vec2(ey*big,3.);
+  return r;
+}
+`],
+  fn: ['mapOiwa','mapYacha','mapKappa','mapEodook'],
+  nsa: `vec3 nor(vec3 p){vec2 e=vec2(.0016,0);
   return normalize(vec3(map(p+e.xyy).x-map(p-e.xyy).x,map(p+e.yxy).x-map(p-e.yxy).x,map(p+e.yyx).x-map(p-e.yyx).x));}
 float sha(vec3 ro,vec3 rd){float s=1.,t=.05;
   for(int i=0;i<24;i++){float h=map(ro+rd*t).x;if(h<.002)return 0.;s=min(s,9.*h/t);t+=clamp(h,.04,.30);if(t>3.6)break;}
@@ -367,15 +457,17 @@ float bar2(vec2 p,vec2 c,vec2 r,float a){
   vec2 q=p-c;q=vec2(q.x*cos(a)-q.y*sin(a),q.x*sin(a)+q.y*cos(a));
   vec2 d=abs(q)-r;return 1.-smoothstep(-.014,.014,min(max(d.x,d.y),0.)+length(max(d,0.)));}
 
-void main(){
+`,
+  mainA: `void main(){
   vec2 uv=(gl_FragCoord.xy*2.-iR)/iR.y;
   gSway=sin(iT*.9);
   gScrub=iPose==1? sin(iT*3.4) : 0.;
   gAmt=iAmt;
-  gDroop=(1.-iMood)*.5;
+  gDroop=(1.-iMood)*.5; gX=iX;
 
-  float cd = iChar==0? 3.62 : 4.05;
-  float cy = iChar==0? .30 : .10;
+  float cd = iChar==0? 3.62 : iChar==1? 4.05 : iChar==2? 2.72 : 3.15;
+  float cy = iChar==0? .30 : iChar==1? .10 : iChar==2? .02 : .06;
+  if(iChar==3) cd*=(1.+(max(.6,gX)-1.)*.62);   /* 어둑시니는 커지면 카메라가 물러난다 */
   vec3 ro=vec3(0.,.38+cy*.4,cd);
   vec3 ww=normalize(vec3(0.,cy,0.)-ro),uu=normalize(cross(vec3(0,1,0),ww)),vv=cross(ww,uu);
   vec3 rd=normalize(uv.x*uu+uv.y*vv+2.25*ww);
@@ -384,7 +476,8 @@ void main(){
   if(h.y<0.){ O=vec4(0.); return; }
 
   vec3 p=ro+rd*t,n=nor(p),base;
-  if(iChar==0){
+`,
+  paint: [`
     if(h.y<.5){
       vec3 l=p-vec3(0.,.95,0.);
       float rib=abs(fract(l.y*7.5)-.5)*2.;
@@ -411,8 +504,7 @@ void main(){
       if(abs(p.y-.02)<.055) base=vec3(.42,.36,.44);
       base*=.90+.10*smoothstep(-.6,.4,p.y); }
     else if(h.y<3.5) base=SKIN;
-    else base=WOOD;
-  } else {
+    else base=WOOD;`,`
     if(h.y<.5){
       base=YSKIN;
       vec3 d=p-vec3(0.,.92,.06);
@@ -436,9 +528,18 @@ void main(){
       vec3 d=p-vec3(sign(p.x)*.20,.98,.37);
       if(length(d.xy-vec2(0.,-.012))<.062) base=vec3(.95,.78,.10);
       if(length(d.xy-vec2(0.,-.012))<.030) base=YINK; }
-  }
-
-  vec3 L=normalize(vec3(-.48,.80,.62));
+`,`
+    if(h.y<.5){ base=vec3(.42,.66,.38); base*=.90+.10*smoothstep(-.5,.5,p.y); }
+    else if(h.y<1.5) base=vec3(.24,.27,.14);
+    else if(h.y<3.5) base=vec3(.97,.96,.90);
+    else if(h.y<4.5) base=vec3(.92,.76,.24);
+    else if(h.y<5.5) base=vec3(.42,.72,.86);
+    else if(h.y<6.5) base=vec3(.07,.09,.11);
+    else base=vec3(.76,.69,.42);
+`,`
+    base = h.y<2.5? vec3(.045,.035,.070) : vec3(.90,.92,.98);
+`],
+  light: `  vec3 L=normalize(vec3(-.48,.80,.62));
   float dif=clamp(dot(n,L),0.,1.), s=sha(p+n*.025,L), o=ao(p,n);
   float sky=clamp(.5+.5*n.y,0.,1.);
   float rim=pow(clamp(1.+dot(n,rd),0.,1.),3.);
@@ -451,8 +552,26 @@ void main(){
   }
   if(iChar==1) lin+=YSKIN*gAmt*.18*clamp(1.-p.y,0.,1.)*o;
   lin+=rim*gAmt*.18*(iChar==0? vec3(.5,.7,1.) : vec3(1.,.35,.2));
-  O=vec4(pow(clamp(lin,0.,1.),vec3(.4545)),1.);
-}`;
+`,
+  extra: `  if(iChar==2){
+    if(h.y>4.5&&h.y<5.5) lin+=vec3(.25,.55,.75)*(.35+gX*.35);
+    lin+=vec3(.9,.8,.3)*gAmt*.12*o;
+  }
+  if(iChar==3){
+    lin*=.42;                                   /* 어둠 덩어리 — 주변광을 깎는다 */
+    lin+=vec3(.52,.34,.80)*rim*(.60+gAmt*1.3);
+    if(h.y>2.5) lin+=vec3(.5,.52,.6)*.45;       /* 창백한 눈만 떠 있다 */
+  }
+`
+};
+/* 요괴 하나짜리 프래그먼트 셰이더를 만든다. iChar를 상수로 박아
+   팔레트·카메라·조명 분기가 컴파일 때 접힌다. */
+function buildFS(i){
+  return SH.head + SH.consts + SH.helpers + 'const int iChar=' + i + ';\n'
+       + SH.maps[i] + 'vec2 map(vec3 p){return ' + SH.fn[i] + '(p);}\n'
+       + SH.nsa + SH.mainA + SH.paint[i] + SH.light + SH.extra
+       + '  O=vec4(pow(clamp(lin,0.,1.),vec3(.4545)),1.);\n}\n';
+}
 
 /* ───────── 공통 도구 · WebGL 캐릭터 렌더러 ───────── */
 const $ = s => document.querySelector(s);
@@ -487,25 +606,45 @@ const GL = {
     if(ms>16.0 && this.scale>this.min){ this.scale=Math.max(this.min,this.scale*0.86); this.hold=1.2; }
     else if(ms<11.5 && this.scale<1){ this.scale=Math.min(1,this.scale*1.10); this.hold=2.0; }
   },
+  /* 프로그램은 요괴를 고를 때 그때 만든다. 넷을 미리 다 만들면
+     컴파일이 느리고, 한 셰이더에 몰면 드라이버가 거부한다. */
+  progs:{}, cur:-1, vs:null, buf:null,
   init(){
     const cv = $('#char'); this.cv = cv;
     const gl = cv.getContext('webgl2',{antialias:false,alpha:true,premultipliedAlpha:true});
     if(!gl){ this.ok=false; return false; }
     this.gl = gl;
-    const sh=(t,s)=>{const o=gl.createShader(t);gl.shaderSource(o,s);gl.compileShader(o);
-      if(!gl.getShaderParameter(o,gl.COMPILE_STATUS)){console.error(gl.getShaderInfoLog(o));return null;}return o;};
-    const vs=sh(gl.VERTEX_SHADER,`#version 300 es\nin vec2 p;void main(){gl_Position=vec4(p,0,1);}`);
-    const fs=sh(gl.FRAGMENT_SHADER,CHAR_FS);
-    if(!vs||!fs){ this.ok=false; return false; }
-    const pr=gl.createProgram(); gl.attachShader(pr,vs); gl.attachShader(pr,fs); gl.linkProgram(pr);
-    if(!gl.getProgramParameter(pr,gl.LINK_STATUS)){ console.error(gl.getProgramInfoLog(pr)); this.ok=false; return false; }
-    gl.useProgram(pr);
-    const b=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,b);
+    this.vs = this.sh(gl.VERTEX_SHADER,`#version 300 es\nin vec2 p;void main(){gl_Position=vec4(p,0,1);}`);
+    if(!this.vs){ this.ok=false; return false; }
+    this.buf=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,this.buf);
     gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
-    const lp=gl.getAttribLocation(pr,'p'); gl.enableVertexAttribArray(lp); gl.vertexAttribPointer(lp,2,gl.FLOAT,false,0,0);
-    ['iR','iT','iChar','iPose','iAmt','iMood'].forEach(k=>this.u[k]=gl.getUniformLocation(pr,k));
     gl.clearColor(0,0,0,0);
-    this.ok=true; return true;
+    this.ok=true;
+    return this.use(0);        /* 첫 요괴로 한 번 만들어 보고 성패를 판단한다 */
+  },
+  sh(t,src){
+    const gl=this.gl, o=gl.createShader(t); gl.shaderSource(o,src); gl.compileShader(o);
+    if(!gl.getShaderParameter(o,gl.COMPILE_STATUS)){ console.error(gl.getShaderInfoLog(o)); return null; }
+    return o;
+  },
+  use(i){
+    if(!this.gl) return false;
+    if(this.cur===i && this.progs[i]) return true;
+    const gl=this.gl;
+    let P=this.progs[i];
+    if(!P){
+      const fs=this.sh(gl.FRAGMENT_SHADER,buildFS(i));
+      if(!fs) return false;
+      const pr=gl.createProgram(); gl.attachShader(pr,this.vs); gl.attachShader(pr,fs); gl.linkProgram(pr);
+      if(!gl.getProgramParameter(pr,gl.LINK_STATUS)){ console.error(gl.getProgramInfoLog(pr)); return false; }
+      const u={}; ['iR','iT','iPose','iAmt','iMood','iX'].forEach(k=>u[k]=gl.getUniformLocation(pr,k));
+      P=this.progs[i]={pr,u,loc:gl.getAttribLocation(pr,'p')};
+    }
+    gl.useProgram(P.pr);
+    gl.bindBuffer(gl.ARRAY_BUFFER,this.buf);
+    gl.enableVertexAttribArray(P.loc); gl.vertexAttribPointer(P.loc,2,gl.FLOAT,false,0,0);
+    this.u=P.u; this.cur=i;
+    return true;
   },
   fit(){
     if(!this.ok) return;
@@ -514,34 +653,52 @@ const GL = {
     const W=Math.round(w*d), H=Math.round(w*.75*d);
     if(cv.width!==W||cv.height!==H){ cv.width=W; cv.height=H; this.gl.viewport(0,0,W,H); }
   },
-  render(t,ch,pose,amt,mood){
+  render(t,ch,pose,amt,mood,x){
     if(!this.ok) return;
     const gl=this.gl;
+    /* 셰이더를 못 만들면 화면을 비운다. 안 지우면 직전 요괴가 남아
+       엉뚱한 놈이 그려진 채로 게임이 돌아간다. */
+    if(!this.use(ch)){ gl.clear(gl.COLOR_BUFFER_BIT); return; }
     gl.clear(gl.COLOR_BUFFER_BIT);
     gl.uniform2f(this.u.iR,this.cv.width,this.cv.height);
     gl.uniform1f(this.u.iT,t);
-    gl.uniform1i(this.u.iChar,ch);
     gl.uniform1i(this.u.iPose,pose);
     gl.uniform1f(this.u.iAmt,amt);
     gl.uniform1f(this.u.iMood,mood);
+    gl.uniform1f(this.u.iX,x||0);
     gl.drawArrays(gl.TRIANGLES,0,3);
   }
 };
 /* ───────── 출연진: 성격이 곧 규칙 ───────── */
-const ROSTER = ['oiwa','yacha'];
+const ROSTER = ['oiwa','yacha','kappa','eodook'];
 const Y = {
   oiwa:  { i:0, emo:'우울', name:'오이와', c:'#7fa8d8', sq:'🔵',
            house:'불 꺼져 가는 초롱', tag:'달래야 움직이는 놈',
            note:'느리다. 가만히 두면 손이 멈춘다. 파란 전조가 많아 주로 칭찬으로 막는다. 말을 자주 거는데, 대개는 달래주길 바란다. 다만 그만두겠다고 물을 땐 단호해야 한다.' },
   yacha: { i:1, emo:'분노', name:'야차', c:'#ff5a4a',
            house:'불난 천막', tag:'혼내야 멈추는 놈',
-           note:'빠르다. 대신 과격해서 그릇을 깬다. 빨간 전조가 많아 주로 혼내서 막는다. 허락을 구하는 척 떠보는데, 대개는 막아야 한다. 다만 진짜 인정받고 싶을 땐 칭찬이 먹힌다.' }
+           note:'빠르다. 대신 과격해서 그릇을 깬다. 빨간 전조가 많아 주로 혼내서 막는다. 허락을 구하는 척 떠보는데, 대개는 막아야 한다. 다만 진짜 인정받고 싶을 땐 칭찬이 먹힌다.' },
+  kappa: { i:2, emo:'기쁨', name:'카파', c:'#6fc46a',
+           house:'물 마르지 않는 웅덩이', tag:'칭찬하면 물을 쏟는 놈',
+           note:'머리 접시의 물이 힘의 원천이다. 칭찬하면 신이 나서 뛰다가 물을 쏟는다. 물이 줄면 손이 느려지고, 다 마르면 주저앉는다. 진정시켜야 물이 찬다. 칭찬을 아껴 쓰는 요괴다.' },
+  eodook:{ i:3, emo:'공포', name:'어둑시니', c:'#9a7fd0',
+           house:'불 없는 골방', tag:'혼내면 커지는 놈',
+           note:'혼자 두면 겁이 쌓여 저절로 커진다. 너무 커지면 주방을 휘저어 그릇을 깬다. 달래야 작아지고, 혼내면 크게 부푼다. 계속 말을 걸어줘야 하는 요괴다.' }
 };
 const SPEC = {
   oiwa:  { wash:5.0, idle:[9,15], down:[5.5,10], warn:[7,11.5], warnDur:2.05, red:.2,
            scoldMood:-22, praiseMood:15, rage:1,  ask:[7,12], askDur:4.2, grade:[20,13,7] },
   yacha: { wash:3.0, idle:[6,10],  down:[10,16], warn:[6.5,10.5], warnDur:1.7,  red:.8,
-           scoldMood:-11, praiseMood:10, rage:.82, ask:[6,10], askDur:3.4, grade:[28,19,10] }
+           scoldMood:-11, praiseMood:10, rage:.82, ask:[6,10], askDur:3.4, grade:[28,19,10] },
+  /* 카파 — 칭찬이 독이다. 칭찬할 때마다 접시 물이 쏟아진다 */
+  kappa: { wash:2.6, idle:[7,12],  down:[12,19], warn:[7,11],   warnDur:1.9,  red:.6,
+           scoldMood:-9,  praiseMood:13, rage:.92, ask:[6,10], askDur:3.6, grade:[22,12,6],
+           x:'water', x0:1, xPraise:-.20, xScold:+.085, xDrift:-.012, xLow:.06 },
+  /* 어둑시니 — 주의가 독이다. 혼낼 때마다 몸이 커진다 */
+  /* 가만두면 저절로 커진다. 달래는 게 유지 비용이다. */
+  eodook:{ wash:3.3, idle:[8,13],  down:[9,15],  warn:[8,12.5], warnDur:2.1,  red:.35,
+           scoldMood:-7,  praiseMood:12, rage:1,   ask:[7,11], askDur:3.9, grade:[30,16,7],
+           x:'size', x0:1, xPraise:-.20, xScold:+.30, xDrift:+.030, xHigh:2.0 }
 };
 const LINE = {
   oiwa: {
@@ -626,6 +783,84 @@ const LINE = {
     ],
     strike:['안 해. 파업이야.'],
     good:['이 정도면 내가 집주인 아니냐.'], mid:['딱 받은 만큼만 했다.'], bad:['처음부터 설거지는 사람 할 일이었어.']
+  },
+  kappa: {
+    work:['물! 물이다!','거품 봐, 거품!','이거 재밌다 진짜!','접시가 반짝반짝해!','하나 더! 하나 더!'],
+    idle:['잠깐만, 물 한 번만 만지고.','이 수세미 떠다니는 거 봤어?','거품으로 산 만들었어!','오이 있어? 오이.'],
+    down:['물이 줄었어… 힘이 안 나.','접시가 가벼워졌어.','조금만 쉬면 안 될까.','머리가 말라.'],
+    warnR:['나 지금 엄청 신났는데!','못 참겠다 진짜!','한 바퀴만 돌래!','물 튀긴다 간다!'],
+    warnB:['어… 물이 없어.','머리가 말랐어…','힘이 빠져.','접시가 비었어…'],
+    accR:['앗! 쏟았다!','미안! 너무 신나서!','물이 날아갔어!','내 잘못 아니야! 팔이 그랬어!'],
+    accB:['주저앉았어… 물이 없어.','못 일어나겠어.','머리가 바싹 말랐어.','미안… 힘이 없어.'],
+
+    scoldWork:['어? 왜! 잘하고 있잖아!','아 놀랐어!','알았어 알았어. 조용히 할게.','목소리 크다!'],
+    scoldIdle:['아 맞다! 할게!','금방 다시 할 거였어!','치사해!','삐질 뻔했다.'],
+    scoldDown:['지금은… 혼내지 마.','물이 없어서 그래.','알아, 느린 거.','조금만.'],
+    scoldBlock:['헉! 멈췄다!','네가 불러서 참았어.','휴, 쏟을 뻔.','고마워. 진짜로.'],
+
+    praiseWork:['그치?! 나 잘하지?!','우와 신난다!','더 할래! 더!','야호!'],
+    praiseIdle:['지금 칭찬해도 되는 거야?','놀고 있었는데!','그럼 더 놀아도 돼?','너 좋은 애구나.'],
+    praiseDown:['조금 기운 난다…','그 말 좋다.','일어나 볼까.','물만 있으면 좋겠는데.'],
+    praiseBlock:['참았어! 봤지?!','안 쏟았어!','칭찬 들으니까 더 참을 수 있어.','나 대단하지!'],
+
+    repScold:['또 혼내!','알았다니까!','자꾸 그러면 삐진다.','목소리 그만 키워.'],
+    repPraise:['자꾸 칭찬하면 나 터져!','또? 또?!','그만해, 물 다 쏟겠어.','칭찬 좀 아껴 써.'],
+
+    ask:[
+      { q:'물 좀 더 세게 틀어도 돼?!', w:'W',
+        ok:'칫. 알았어, 잠글게.', no:'좋아! 콸콸!', late:'대답 없으면 트는 거다!' },
+      { q:'나 지금 잘하고 있는 거 맞지?! 응?!', w:'P',
+        ok:'그치! 더 빨리 할래!', no:'어… 아닌가… 시무룩.', late:'안 보고 있었구나…' },
+      { q:'접시 물 한 바퀴 돌려봐도 돼?', w:'W',
+        ok:'알았어. 가만히 들고 있을게.', no:'야호! 돈다!', late:'셋 세고 돌린다!' },
+      { q:'이거 봐! 거품으로 산 만들었어!', w:'P',
+        ok:'헤헤. 하나 더 만들래!', no:'…재미없어?', late:'아무도 안 보네.' },
+      { q:'딱 한 번만 뛰어도 돼?', w:'W',
+        ok:'알았어. 발 붙이고 있을게.', no:'신난다! 점프!', late:'말 안 하면 뛴다?' },
+      { q:'너 나 좋아해?', w:'P',
+        ok:'나도! 그릇 더 닦아줄게!', no:'…그럼 왜 데려왔어.', late:'대답을 왜 안 해.' }
+    ],
+    strike:['물이 다 말랐어… 못 움직여.'],
+    good:['오늘 완전 재밌었어! 또 하자!'], mid:['그래도 재밌었어!'], bad:['물만 안 쏟았어도…']
+  },
+  eodook: {
+    work:['작게… 작게 있을게.','소리 안 낼게.','이만큼만 할게.','그릇이 차갑다.','조용히 하는 중이야.'],
+    idle:['저기… 뒤에 누구 있어?','그림자가 움직였어.','잠깐만 멈춰 있을게.','발소리가 났어.'],
+    down:['무서워서 손이 안 움직여.','구석에 있고 싶어.','누가 보는 것 같아.','어두운 데로 갈래.'],
+    warnR:['커지는 것 같아…','몸이 부풀어…','무서워, 무섭다고!','멈출 수가 없어!'],
+    warnB:['사라질 것 같아…','너무 작아졌어.','숨이 안 쉬어져.','불빛이 아파.'],
+    accR:['너무 커져서… 쳤어.','미안, 몸이 안 맞았어.','일부러 그런 게 아니야!','줄어들게, 금방.'],
+    accB:['놓쳤어… 손이 떨려서.','무서워서 그랬어.','미안해.','보지 마, 제발.'],
+
+    scoldWork:['히익!','조용히 하고 있었는데…','안 혼내면 안 돼?','커진다, 커져…'],
+    scoldIdle:['미, 미안! 할게!','놀라서 더 못 움직여.','소리치지 마…','알았어, 알았어.'],
+    scoldDown:['그만… 더 커져.','혼내면 더 무서워져.','지금은 안 돼.','숨고 싶어.'],
+    scoldBlock:['멈췄어… 멈췄어.','겨우 참았어.','고마워, 근데 좀 컸어.','소리에 놀라서 멈췄어.'],
+
+    praiseWork:['그래도… 돼?','조금 작아진 것 같아.','고마워. 숨이 쉬어져.','계속 말해줘.'],
+    praiseIdle:['멈춰 있었는데 칭찬해?','화 안 났어?','그럼 다시 해볼게.','이상한 사람이야.'],
+    praiseDown:['…조금 괜찮아졌어.','손이 움직여져.','한 번 더 말해줄래.','작아지는 느낌이야.'],
+    praiseBlock:['참았어. 네 말 듣고.','안 커졌어, 봤지?','다행이야.','고마워.'],
+
+    repScold:['그만! 자꾸 커진다고!','무서워서 커지는 거야!','혼낼수록 나빠져!','제발 조용히 말해.'],
+    repPraise:['계속 말해도… 돼?','그 말 아까도 했어.','진심이야?','자꾸 들으니까 어색해.'],
+
+    ask:[
+      { q:'지금… 나 보고 있어?', w:'P',
+        ok:'봐도… 괜찮아. 할게.', no:'역시 보고 있었어…', late:'대답 없는 게 제일 무서워.' },
+      { q:'나 커졌어? 커진 것 같은데…', w:'P',
+        ok:'아니구나. 다행이다.', no:'역시… 더 커질까 봐 무서워.', late:'말 안 해주면 더 커져.' },
+      { q:'불 좀 켜도 돼?', w:'W',
+        ok:'안 되는구나. 다행이야.', no:'밝으면 나 사라지는데…', late:'켜면 나 없어진다?' },
+      { q:'여기 숨어 있어도 돼?', w:'W',
+        ok:'…알았어. 나와서 할게.', no:'고마워. 안 나올게.', late:'대답 없으면 숨는다.' },
+      { q:'뒤에 누가 서 있는 것 같아…', w:'P',
+        ok:'아무도 없구나. 휴.', no:'역시 있구나…!', late:'왜 말을 안 해…' },
+      { q:'너… 나 무서워?', w:'P',
+        ok:'안 무섭구나. 좀 작아졌어.', no:'그치. 다들 그래.', late:'그 침묵이 답이네.' }
+    ],
+    strike:['너무 커졌어… 아무것도 못 하겠어.'],
+    good:['작게 있었는데 이만큼 했어.'], mid:['그래도 몇 개는 했어.'], bad:['자꾸 커져서… 미안해.']
   }
 };
 const MYVOICE = {
@@ -659,7 +894,7 @@ const S={ id:'yacha', spec:null, L:null, on:false,
   warnKind:'R', warnT:0, warnMax:0, stT:0,
   nextIdle:0, nextDown:0, nextWarn:0, warnMul:1,
   praiseRun:0, scoldRun:0, cdW:0, cdP:0, strikeNeed:0,
-  ask:null, askT:0, askMax:0, nextAsk:0, askHit:0, askMiss:0, recv:1,
+  ask:null, askT:0, askMax:0, nextAsk:0, askHit:0, askMiss:0, recv:1, x:0, spill:0,
   lastBtn:'', btnRun:0,
   shake:0, flash:0, flashCol:'#fff', water:.3, parts:[], clips:[], over:false, sayT:0, amt:0 };
 
@@ -669,7 +904,19 @@ const schedIdle=()=>{S.nextIdle=S.t+rnd(S.spec.idle[0],S.spec.idle[1]);};
 const schedDown=()=>{S.nextDown=S.t+rnd(S.spec.down[0],S.spec.down[1]);};
 const schedWarn=()=>{S.nextWarn=S.t+Math.max(2.4,rnd(S.spec.warn[0],S.spec.warn[1])*S.warnMul*rampW());};
 const warnDur=()=>Math.max(.7,S.spec.warnDur*clamp(1-S.t/420,.6,1)*(.78+S.mood/450));
-const speedMul=()=>.34+.78*clamp(S.mood/100,0,1);   /* 의욕 1점이 전부 속도에 반영된다 */
+const speedMul=()=>{
+  let v=.34+.78*clamp(S.mood/100,0,1);          /* 의욕 1점이 전부 속도에 반영된다 */
+  if(S.spec.x==='water') v*=(.32+.68*clamp(S.x,0,1));      /* 물이 마르면 손이 느려진다 */
+  if(S.spec.x==='size')  v*=clamp(1.22-S.x*.26,.42,1.08);  /* 커질수록 둔해진다 */
+  return v;
+};
+/* 고유값을 움직인다. 카파는 접시 물, 어둑시니는 몸집. */
+function bumpX(key){
+  if(!S.spec.x) return;
+  const d=S.spec[key]||0;
+  if(S.spec.x==='water'){ if(d<0) S.spill=1; S.x=clamp(S.x+d,0,1); }
+  else S.x=clamp(S.x+d,1,2.8);
+}
 const schedAsk=()=>{S.nextAsk=S.t+rnd(S.spec.ask[0],S.spec.ask[1]);};
 
 /* 같은 버튼을 세 번 이어 누르면 요괴가 알아챈다.
@@ -727,6 +974,7 @@ function startDay(id){
   S.praiseRun=0;S.scoldRun=0;S.cdW=0;S.cdP=0;S.shake=0;S.flash=0;S.water=.3;
   S.parts=[];S.clips=[];S.over=false;S.sayT=3;S.amt=0;
   S.ask=null;S.askT=0;S.askHit=0;S.askMiss=0;S.lastBtn='';S.btnRun=0;S.recv=1;
+  S.x=S.spec.x? S.spec.x0 : 0; S.spill=0;
   schedIdle();schedDown();schedAsk();S.nextWarn=S.t+rnd(3.5,5.5);
   document.documentElement.style.setProperty('--yc',Y[id].c);
   $('#camWho').textContent=`${Y[id].name} · ${Y[id].emo}`;
@@ -747,6 +995,15 @@ function step(dt){
   S.cdW=Math.max(0,S.cdW-dt);S.cdP=Math.max(0,S.cdP-dt);
   if(S.st!=='strike') S.mood=clamp(S.mood-dt*1.6,0,100);   /* 방치하면 꺼진다 */
   S.recv=clamp(S.recv+dt*.42,0,1.15);   /* 칭찬을 받아들일 여유가 차오른다 */
+  S.spill=Math.max(0,S.spill-dt*1.6);
+  if(S.spec.x==='water'){
+    S.x=clamp(S.x+S.spec.xDrift*dt,0,1);
+    if(S.x<=S.spec.xLow&&S.st!=='strike'&&S.st!=='acc'){
+      S.st='strike';S.strikeNeed=2;say(pick(S.L.strike));fx('#6bb8db',7);}
+  } else if(S.spec.x==='size'){
+    S.x=Math.max(1,S.x+S.spec.xDrift*dt);
+    if(S.x>=S.spec.xHigh&&S.st!=='acc'){ S.x=1.35; accident('R'); }
+  }
   S.shake=Math.max(0,S.shake-dt*36);S.flash=Math.max(0,S.flash-dt*2.6);S.sayT-=dt;
   for(let i=S.parts.length-1;i>=0;i--){const p=S.parts[i];p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=p.g*dt;p.life-=dt;if(p.life<=0)S.parts.splice(i,1);}
 
@@ -779,8 +1036,14 @@ function glPose(){ return S.st==='warn'||S.st==='acc'? 2 : (S.st==='work'? 1 : 0
 function doWarn(){
   if(!S.on||S.over||S.cdW>0)return;
   S.cdW=.8;Snd.warn();me(pick(MYVOICE.warn));buzz(18);
-  if(S.ask){ tally('W'); return closeAsk(S.ask.w==='W'?'ok':'no'); }
-  tally('W');
+  if(S.ask){ tally('W'); bumpX('xScold'); return closeAsk(S.ask.w==='W'?'ok':'no'); }
+  tally('W'); bumpX('xScold');
+  /* 카파는 물이 말라 주저앉는다. 달래는 게 아니라 진정시켜야 일어난다 */
+  if(S.st==='strike'&&S.spec.x==='water'){
+    S.strikeNeed--; S.x=clamp(S.x+.22,0,1);
+    if(S.strikeNeed<=0){S.st='work';S.mood=Math.max(S.mood,28);schedWarn();schedIdle();schedDown();schedAsk();say(pick(S.L.scoldBlock));}
+    else say('…물. 물 좀.');
+    return; }
   if(S.st==='warn'){
     if(S.warnKind==='R'){S.st='work';S.water=.3;S.mood=clamp(S.mood+S.spec.scoldMood*.55,0,100);
       S.warnMul=Math.max(.45,S.warnMul*S.spec.rage);schedWarn();schedIdle();schedAsk();fx('#7dffb0',5);say(pick(S.L.scoldBlock));}
@@ -796,14 +1059,15 @@ function doWarn(){
 function doPraise(){
   if(!S.on||S.over||S.cdP>0)return;
   S.cdP=.8;Snd.praise();me(pick(MYVOICE.praise));buzz(12);
-  if(S.ask){ tally('P'); return closeAsk(S.ask.w==='P'?'ok':'no'); }
-  tally('P');
+  if(S.ask){ tally('P'); bumpX('xPraise'); return closeAsk(S.ask.w==='P'?'ok':'no'); }
+  tally('P'); bumpX('xPraise');
   if(S.st==='warn'){
     if(S.warnKind==='B'){S.st='work';S.water=.3;S.mood=clamp(S.mood+S.spec.praiseMood*.7,0,100);
       schedWarn();schedDown();schedAsk();fx('#7dffb0',5);say(pick(S.L.praiseBlock));}
     else accident('R');
     return;
   }
+  if(S.st==='strike'&&S.spec.x==='water'){ say('물이… 칭찬으론 안 차.'); return; }
   if(S.st==='strike'){S.strikeNeed--;S.mood=clamp(S.mood+18,0,100);
     if(S.strikeNeed<=0){S.st='work';S.mood=Math.max(S.mood,30);schedWarn();schedIdle();schedDown();schedAsk();say(praiseLine());}
     else say('…한 번만 더 말해줘.');
@@ -933,6 +1197,16 @@ function drawFG(c){
     c.fillStyle='rgba(0,0,0,.5)'; rr(c,12,270,116,9,5); c.fill();
     c.fillStyle=S.mood>55?'#8fe8ae':S.mood>25?'#ffd23f':'#ff6b60';
     rr(c,12,270,Math.max(3,116*S.mood/100),9,5); c.fill();
+    /* 요괴 고유 게이지 — 카파는 접시 물, 어둑시니는 몸집 */
+    if(S.spec.x){
+      const water=S.spec.x==='water';
+      const v=water? clamp(S.x,0,1) : clamp((S.x-1)/(S.spec.xHigh-1),0,1);
+      c.textAlign='center'; c.fillStyle='rgba(255,245,224,.88)';
+      c.fillText(water?'접시 물':'몸집',200,266);
+      c.fillStyle='rgba(0,0,0,.5)'; rr(c,142,270,116,9,5); c.fill();
+      c.fillStyle=water? (v>.35?'#6bb8db':'#ff8a3d') : (v<.62?'#a98fd8':'#ff6b60');
+      rr(c,142,270,Math.max(3,116*v),9,5); c.fill();
+    }
     c.textAlign='right'; c.fillStyle='rgba(255,245,224,.88)'; c.fillText('설거지',388,266);
     c.fillStyle='rgba(0,0,0,.5)'; rr(c,272,270,116,9,5); c.fill();
     c.fillStyle=Y[S.id].c; rr(c,272,270,Math.max(3,116*clamp(S.prog,0,1)),9,5); c.fill();
@@ -1026,7 +1300,7 @@ function frame(ms){
   if(playing){
     GL.tune(dt);
     step(dt);
-    GL.render(S.t, Y[S.id].i, glPose(), S.amt, S.mood/100);
+    GL.render(S.t, Y[S.id].i, glPose(), S.amt, S.mood/100, S.x);
     drawFG($('#fg').getContext('2d'));
     const w=$('#btnWarn'),p=$('#btnPraise');
     w.classList.toggle('cool',S.cdW>0);p.classList.toggle('cool',S.cdP>0);

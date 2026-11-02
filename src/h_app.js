@@ -68,7 +68,7 @@ function frame(ms){
   if(playing){
     GL.tune(dt);
     step(dt);
-    GL.render(S.t, Y[S.id].i, glPose(), S.amt, S.mood/100);
+    GL.render(S.t, Y[S.id].i, glPose(), S.amt, S.mood/100, S.x);
     drawFG($('#fg').getContext('2d'));
     const w=$('#btnWarn'),p=$('#btnPraise');
     w.classList.toggle('cool',S.cdW>0);p.classList.toggle('cool',S.cdP>0);
