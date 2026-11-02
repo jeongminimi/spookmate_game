@@ -265,10 +265,24 @@ vec2 mapKappa(vec3 p){
   float bd=sdEll(q-vec3(0.,-.02,.02),vec3(.34,.33,.30));
   bd=smin(bd,sdEll(q-vec3(0.,-.30,.02),vec3(.28,.14,.26)),.14);
   vec2 r=vec2(bd,0.);
-  /* 등껍질 */
-  float shl=sdEll(q-vec3(0.,.00,-.20),vec3(.40,.38,.26));
-  shl=max(shl,-(q.z+.02));
+  /* 등껍질 — 몸보다 넓어서 정면에서도 양옆으로 비어져 나온다 */
+  vec3 sq=q-vec3(0.,.02,-.13);
+  float shl=sdEll(sq,vec3(.475,.445,.335));
+  shl=max(shl,sq.z-.15);                                  /* 앞을 열어 몸을 뺀다 */
+  /* 연변갑판 — 가장자리를 한 바퀴 두른 테 */
+  float marg=sdTor(rotX(sq,1.5708),vec2(.445,.062));
+  marg=max(marg,sq.z-.15);
+  shl=smin(shl,marg,.045);
+  /* 갑판 홈 — 능선 하나와 방사형 다섯 */
+  shl=smax(shl,-sdTor(rotX(sq-vec3(0.,0.,.02),1.5708),vec2(.295,.026)),.035);
+  for(int i=0;i<5;i++){ float a=(float(i)-2.)*1.256;
+    shl=smax(shl,-sdCap(sq,vec3(sin(a)*.07,cos(a)*.07,-.31),
+                           vec3(sin(a)*.49,cos(a)*.49,.06),.024),.035); }
   if(shl<r.x)r=vec2(shl,1.);
+  /* 배갑 — 정면에서도 거북이라는 걸 알 수 있게 */
+  float pla=sdEll(q-vec3(0.,-.05,.285),vec3(.225,.255,.060));
+  pla=smax(pla,-sdTor(rotX(q-vec3(0.,-.05,.30),1.5708),vec2(.165,.016)),.025);
+  if(pla<r.x)r=vec2(pla,7.);
   /* 머리 */
   vec3 hp=vec3(0.,.44,.02);
   float hd=sdEll(q-hp,vec3(.30,.27,.28));
@@ -382,12 +396,13 @@ const PAL=`vec3 palette(float m){
     return vec3(.93,.91,.88); }
   if(gC==4){                                    /* 카파 — 초록 */
     if(m<.5) return vec3(.42,.66,.38);
-    if(m<1.5)return vec3(.30,.42,.26);
+    if(m<1.5)return vec3(.24,.27,.14);
     if(m<2.5)return vec3(.42,.66,.38);
     if(m<3.5)return vec3(.97,.96,.90);
     if(m<4.5)return vec3(.92,.76,.24);
     if(m<5.5)return vec3(.42,.72,.86);
-    return vec3(.07,.09,.11); }
+    if(m<6.5)return vec3(.07,.09,.11);
+    return vec3(.76,.69,.42); }
   if(m<.5) return vec3(.56,.62,.34);            /* 아카나메 — 기름기 도는 녹갈색 */
   if(m<1.5)return vec3(.40,.44,.24);
   if(m<2.5)return vec3(.56,.62,.34);

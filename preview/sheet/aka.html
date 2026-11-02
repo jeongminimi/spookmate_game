@@ -150,12 +150,13 @@ vec3 palette(float m){
     return vec3(.93,.91,.88); }
   if(gC==4){                                    /* 카파 — 초록 */
     if(m<.5) return vec3(.42,.66,.38);
-    if(m<1.5)return vec3(.30,.42,.26);
+    if(m<1.5)return vec3(.24,.27,.14);
     if(m<2.5)return vec3(.42,.66,.38);
     if(m<3.5)return vec3(.97,.96,.90);
     if(m<4.5)return vec3(.92,.76,.24);
     if(m<5.5)return vec3(.42,.72,.86);
-    return vec3(.07,.09,.11); }
+    if(m<6.5)return vec3(.07,.09,.11);
+    return vec3(.76,.69,.42); }
   if(m<.5) return vec3(.56,.62,.34);            /* 아카나메 — 기름기 도는 녹갈색 */
   if(m<1.5)return vec3(.40,.44,.24);
   if(m<2.5)return vec3(.56,.62,.34);
