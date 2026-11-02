@@ -1,0 +1,236 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>눗페포 이미지보드</title>
+<style>
+ :root{--bg:#0d0a12;--ink:#f6efe2;--dim:#9a91a9;--line:rgba(255,255,255,.1);--c:#e8b0b8}
+ *{box-sizing:border-box}
+ html,body{margin:0;background:var(--bg);color:var(--ink);
+  font:15px/1.6 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;-webkit-text-size-adjust:100%}
+ .wrap{max-width:980px;margin:0 auto;padding:24px 16px 64px}
+ .hd{border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:18px}
+ .eyebrow{font-size:11.5px;letter-spacing:.16em;color:var(--c);margin:0 0 6px;text-transform:uppercase}
+ h1{font-size:27px;margin:0;letter-spacing:-.02em}
+ h1 em{font-style:normal;font-size:15px;color:var(--c);margin-left:9px;letter-spacing:0}
+ .meta{margin:7px 0 0;font-size:13.5px;color:var(--dim)}
+ .meta b{color:var(--ink);font-weight:600}
+ .stage{position:relative;aspect-ratio:4/3;border:1px solid var(--line);border-radius:14px;overflow:hidden;
+  background:radial-gradient(130% 95% at 50% 15%,#1b1424 0%,#0a080e 100%)}
+ .stage canvas{display:block;position:absolute;inset:0;width:100%;height:100%}
+ .tags{position:absolute;inset:0;display:grid;grid-template:repeat(3,1fr)/repeat(4,1fr);pointer-events:none}
+ .tags div{padding:7px 8px;font-size:10.5px;line-height:1.3;color:var(--dim);
+  text-shadow:0 1px 5px #000,0 0 12px #000;border-right:1px solid rgba(255,255,255,.045);
+  border-bottom:1px solid rgba(255,255,255,.045)}
+ .tags div b{display:block;color:var(--ink);font-size:11.5px;font-weight:600}
+ h2{font-size:13px;letter-spacing:.1em;color:var(--dim);margin:26px 0 10px;text-transform:uppercase}
+ .pal{display:flex;flex-wrap:wrap;gap:9px}
+ .pal div{display:flex;align-items:center;gap:7px;font-size:12.5px;color:#cbc3d4;
+  border:1px solid var(--line);border-radius:999px;padding:5px 11px 5px 6px}
+ .pal i{width:17px;height:17px;border-radius:50%;display:block;border:1px solid rgba(255,255,255,.18)}
+ table{width:100%;border-collapse:collapse;font-size:13.5px}
+ th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+ th{font-size:11.5px;letter-spacing:.06em;color:var(--dim);font-weight:600}
+ td:first-child{color:var(--ink);font-weight:600;white-space:nowrap;width:1%}
+ td:nth-child(2){color:var(--c);font-variant-numeric:tabular-nums;white-space:nowrap;width:1%}
+ td:last-child{color:#c3bbcf}
+ ul.todo{margin:0;padding-left:19px;color:#c3bbcf;font-size:13.5px}
+ ul.todo li{margin-bottom:4px}
+ .foot{margin-top:26px;font-size:12.5px;color:var(--dim);border-top:1px solid var(--line);padding-top:13px}
+</style></head><body>
+<div class="wrap">
+ <div class="hd">
+  <p class="eyebrow">SPOOKMATE · 이미지보드</p>
+  <h1>눗페포<em>권태</em></h1>
+  <p class="meta"><b>일본 · 눗페포(ぬっぺっぽう)</b> · 시작을 안 하는 놈</p>
+ </div>
+ <div class="stage"><canvas id="cv"></canvas><div class="tags"><div><b>전신 · 정면</b></div><div><b>전신 · 측면</b></div><div><b>전신 · 3/4</b></div><div><b>전신 · 뒷면</b></div><div><b>얼굴 · 정면</b></div><div><b>얼굴 · 3/4</b></div><div><b>접힌 살 — 주름이 얼굴처럼 보인다</b></div><div><b>로우 앵글</b></div><div><b>표정 · 평상</b>감정 0%</div><div><b>표정 · 전조</b>감정 42%</div><div><b>표정 · 사고</b>감정 72%</div><div><b>표정 · 극단</b>감정 100%</div></div></div>
+ <h2>색</h2><div class="pal"><div><i style="background:#b39188"></i>살</div><div><i style="background:#291c1f"></i>눈·입</div><div><i style="background:#eee8e0"></i>눈동자</div></div>
+ <h2>부여한 움직임</h2>
+ <table><thead><tr><th>부위</th><th>주기</th><th>움직임</th></tr></thead><tbody><tr><td>주저앉기</td><td>0.62 Hz</td><td>가장 느린 축. 아래로 눌렸다 올라온다</td></tr><tr><td>좌우 기울기</td><td>0.44 Hz</td><td>천천히 비스듬히</td></tr><tr><td>눈</td><td>어긋남</td><td>좌우 높이를 다르게 둬서 초점이 안 맞는다</td></tr><tr><td>극단</td><td>0→1</td><td>세로로 38%까지 눌리고 가로로 52% 퍼진다</td></tr><tr><td>얼굴 이동</td><td>0→1</td><td>녹을수록 얼굴이 앞면에서 윗면으로 떠오른다</td></tr></tbody></table>
+ <h2>아직 손봐야 할 것</h2><ul class="todo"><li>입이 주름에 묻혀 거의 안 보인다</li><li>눈이 점 두 개라 멍한 표정이 안 읽힌다</li><li>이름값(넙데데한 얼굴)을 더 살려야 한다</li></ul>
+ <p class="foot">그림을 따로 그린 게 아니라 게임에 들어갈 실제 모델을 열두 각도에서 찍은 것입니다. 여기서 고치라고 하신 건 모델에 그대로 반영됩니다.</p>
+</div>
+<script>
+const FS=`#version 300 es
+precision highp float;
+out vec4 O;
+uniform vec2 iR; uniform float iT; uniform float iE; uniform vec4 iCell;
+uniform vec3 iCam; uniform vec3 iTgt; uniform float iFov; uniform int iPose;
+float gE,gSway,gScrub,gAmt,gDroop;
+float smin(float a,float b,float k){float h=clamp(.5+.5*(b-a)/k,0.,1.);return mix(b,a,h)-k*h*(1.-h);}
+float smax(float a,float b,float k){return -smin(-a,-b,k);}
+vec3 rotZ(vec3 p,float a){float c=cos(a),s=sin(a);return vec3(c*p.x-s*p.y,s*p.x+c*p.y,p.z);}
+vec3 rotX(vec3 p,float a){float c=cos(a),s=sin(a);return vec3(p.x,c*p.y-s*p.z,s*p.y+c*p.z);}
+vec3 rotY(vec3 p,float a){float c=cos(a),s=sin(a);return vec3(c*p.x+s*p.z,p.y,-s*p.x+c*p.z);}
+float sdEll(vec3 p,vec3 r){float k0=length(p/r),k1=length(p/(r*r));return k0*(k0-1.)/k1;}
+float sdBox(vec3 p,vec3 b,float rr){vec3 d=abs(p)-b;return length(max(d,0.))+min(max(d.x,max(d.y,d.z)),0.)-rr;}
+float sdCap(vec3 p,vec3 a,vec3 b,float r){vec3 pa=p-a,ba=b-a;float h=clamp(dot(pa,ba)/dot(ba,ba),0.,1.);return length(pa-ba*h)-r;}
+float sdCone(vec3 p,vec3 a,vec3 b,float r1,float r2){
+  vec3 ba=b-a;float l2=dot(ba,ba),rr=r1-r2,a2=l2-rr*rr,il2=1./l2;
+  vec3 pa=p-a;float y=dot(pa,ba),z=y-l2;vec3 w=pa*l2-ba*y;float x2=dot(w,w),y2=y*y*l2,z2=z*z*l2;
+  float k=sign(rr)*rr*rr*x2;
+  if(sign(z)*a2*z2>k)return sqrt(x2+z2)*il2-r2;
+  if(sign(y)*a2*y2<k)return sqrt(x2+y2)*il2-r1;
+  return (sqrt(x2*a2*il2)+y*rr)*il2-r1;}
+float sdTor(vec3 p,vec2 t){vec2 q=vec2(length(p.xz)-t.x,p.y);return length(q)-t.y;}
+
+const int gC=3;
+/* ══ 4. 눗페포 — 권태 ══ */
+vec2 mapNuppe(vec3 p){
+  vec3 q=p; float sag=sin(iT*.62)*.022;
+  q.y-=sag; q=rotZ(q,sin(iT*.44)*.045);
+  /* 축 늘어진 덩어리 — 목이 없다 */
+  float d=sdEll(q-vec3(-.03,.02,0.),vec3(.60,.44,.49));
+  d=smin(d,sdEll(q-vec3(.07,-.38,.04),vec3(.70,.28,.54)),.26);
+  d=smin(d,sdEll(q-vec3(-.09,.30,.10),vec3(.43,.27,.39)),.22);
+  /* 한쪽으로 무너진 살 — 좌우대칭이면 귀여워진다 */
+  d=smin(d,sdEll(q-vec3(-.40,-.30,.06),vec3(.30,.22,.34)),.22);
+  d=smin(d,sdEll(q-vec3( .30,-.08,-.06),vec3(.27,.30,.33)),.24);
+  /* 접힌 주름 — 가로로 눌린 타원을 겹쳐 살이 접히게 */
+  d=smin(d,sdEll(q-vec3(-.36,-.14,.40),vec3(.25,.17,.22)),.15);
+  d=smin(d,sdEll(q-vec3( .36,-.14,.40),vec3(.25,.17,.22)),.15);
+  d=smin(d,sdEll(q-vec3(0.,-.30,.46),vec3(.34,.16,.20)),.14);
+  /* 늘어진 턱살 — 입 아래로 처진다 */
+  d=smin(d,sdEll(q-vec3(.02,-.26,.42),vec3(.26,.19,.19)),.13);
+  /* 가로로 접힌 살 — 홈을 깊게 파야 주름으로 읽힌다 */
+  d=smax(d,-sdTor(rotX(q-vec3(-.02,-.17,.10),1.5708),vec2(.52,.062)),.055);
+  d=smax(d,-sdTor(rotX(q-vec3(-.05,.19,.06),1.5708),vec2(.44,.050)),.05);
+  d=smax(d,-sdTor(rotX(q-vec3( .04,-.50,.08),1.5708),vec2(.46,.045)),.05);
+  /* 뭉툭한 팔다리 */
+  d=smin(d,sdCap(q,vec3(-.52,.02,.10),vec3(-.80,-.34,.22),.115),.10);
+  d=smin(d,sdCap(q,vec3( .52,.02,.10),vec3( .80,-.34,.22),.115),.10);
+  d=smin(d,sdCap(q,vec3(-.26,-.56,.10),vec3(-.30,-.76,.18),.14),.12);
+  d=smin(d,sdCap(q,vec3( .26,-.56,.10),vec3( .30,-.76,.18),.14),.12);
+  vec2 r=vec2(d,0.);
+  /* 주름 사이에 파묻힌 눈 — 멍한 표정 */
+  /* 멍한 눈 — 주름 사이에 박아넣되 표면 밖으로 꺼낸다 */
+  /* 초점 없는 눈 — 높이를 어긋나게 해서 멍하게 */
+  float ey=min(sdEll(q-vec3(-.185,.070,.470),vec3(.088,.044,.055)),
+               sdEll(q-vec3( .150,.030,.480),vec3(.082,.040,.055)));
+  if(ey<r.x)r=vec2(ey,4.);
+  float pu=min(length(q-vec3(-.185,.062,.520))-.026, length(q-vec3(.150,.022,.528))-.024);
+  if(pu<r.x)r=vec2(pu,6.);
+  /* 반쯤 벌어진 입 */
+  float mo=sdEll(q-vec3(.01,-.115,.505),vec3(.155,.045,.055));
+  if(mo<r.x)r=vec2(mo,4.);
+  return r;
+}vec2 map(vec3 p){return mapNuppe(p);}
+vec3 nor(vec3 p){vec2 e=vec2(.0018,0);
+  return normalize(vec3(map(p+e.xyy).x-map(p-e.xyy).x,map(p+e.yxy).x-map(p-e.yxy).x,map(p+e.yyx).x-map(p-e.yyx).x));}
+float sha(vec3 ro,vec3 rd){float s=1.,t=.05;
+  for(int i=0;i<20;i++){float h=map(ro+rd*t).x;if(h<.002)return 0.;s=min(s,9.*h/t);t+=clamp(h,.05,.30);if(t>3.4)break;}
+  return clamp(s,0.,1.);}
+float ao(vec3 p,vec3 n){float o=0.,w=1.;
+  for(int i=0;i<4;i++){float h=.025+.13*float(i);o+=(h-map(p+n*h).x)*w;w*=.72;}
+  return clamp(1.-1.5*o,0.,1.);}
+
+vec3 palette(float m){
+  if(gC==0){                                    /* 우렁각시 — 젖은 진주빛 */
+    if(m<.5) return vec3(.80,.82,.76);
+    if(m<1.5)return vec3(.58,.70,.62);
+    if(m<2.5)return vec3(.86,.84,.78);
+    if(m<3.5)return vec3(.10,.09,.12);
+    if(m<4.5)return vec3(.30,.26,.30);
+    if(m<5.5)return vec3(.97,.96,.92);
+    return vec3(.09,.07,.11); }
+  if(gC==1){                                    /* 어둑시니 — 거의 검정 */
+    if(m<2.5) return vec3(.045,.035,.070);
+    return vec3(.90,.92,.98); }
+  if(gC==2){                                    /* 쿠단 — 바랜 흰 소 */
+    if(m<.5) return vec3(.84,.80,.72);
+    if(m<1.5)return vec3(.26,.22,.20);
+    if(m<2.5)return vec3(.88,.80,.70);
+    if(m<3.5)return vec3(.95,.94,.90);
+    return vec3(.22,.10,.12); }
+  if(gC==3){                                    /* 눗페포 — 핏기 없는 살 */
+    if(m<3.5) return vec3(.70,.57,.53);
+    if(m<5.5) return vec3(.16,.11,.12);
+    return vec3(.93,.91,.88); }
+  if(gC==4){                                    /* 카파 — 초록 */
+    if(m<.5) return vec3(.42,.66,.38);
+    if(m<1.5)return vec3(.30,.42,.26);
+    if(m<2.5)return vec3(.42,.66,.38);
+    if(m<3.5)return vec3(.97,.96,.90);
+    if(m<4.5)return vec3(.92,.76,.24);
+    if(m<5.5)return vec3(.42,.72,.86);
+    return vec3(.07,.09,.11); }
+  if(m<.5) return vec3(.56,.62,.34);            /* 아카나메 — 기름기 도는 녹갈색 */
+  if(m<1.5)return vec3(.40,.44,.24);
+  if(m<2.5)return vec3(.56,.62,.34);
+  if(m<3.5)return vec3(.94,.92,.78);
+  if(m<4.5)return vec3(.20,.10,.11);
+  return vec3(.80,.36,.40);
+}
+
+void main(){
+  vec2 uv=((gl_FragCoord.xy-iCell.xy)*2.-iCell.zw)/iCell.w;
+  gE=iE; gAmt=iE; gSway=sin(iT*.9); gScrub=iPose==1? sin(iT*3.4):0.; gDroop=0.;
+  float ya=iCam.x, pi=iCam.y, ds=iCam.z;
+  vec3 ro=iTgt+vec3(sin(ya)*cos(pi),sin(pi),cos(ya)*cos(pi))*ds;
+  vec3 ww=normalize(iTgt-ro),uu=normalize(cross(vec3(0,1,0),ww)),vv=cross(ww,uu);
+  vec3 rd=normalize(uv.x*uu+uv.y*vv+iFov*ww);
+  float t=.04; vec2 h=vec2(-1.);
+  for(int i=0;i<96;i++){h=map(ro+rd*t);if(h.x<.0015*t)break;t+=h.x*.80;if(t>12.){h.y=-1.;break;}}
+  if(h.y<0.){O=vec4(0.);return;}
+  vec3 p=ro+rd*t,n=nor(p),base=palette(h.y);
+  vec3 L=normalize(vec3(.62,.80,.55));
+  float dif=clamp(dot(n,L),0.,1.), s=sha(p+n*.01,L), o=ao(p,n);
+  float sky=clamp(.5+.5*n.y,0.,1.);
+  float rim=pow(clamp(1.+dot(rd,n),0.,1.),2.6);
+  float amb = gC==1? .34 : 1.;
+  vec3 lin=base*(vec3(1.08,1.00,.86)*dif*s*1.06 + vec3(.36,.38,.50)*sky*o*.52*amb + vec3(.22)*o*amb);
+  lin+=rim*.26*vec3(1.,.88,.76)*o;
+  if(gC==1) lin+=vec3(.52,.34,.80)*rim*(.70+gE*1.5);
+  if(gC==4 && h.y>4.5 && h.y<5.5) lin+=vec3(.25,.55,.75)*.5;
+  if(gC==5) lin+=base*pow(clamp(dot(n,normalize(vec3(.3,1.,.6))),0.,1.),22.)*.55;
+  vec3 peak = gC==0? vec3(.30,.70,.55) : gC==1? vec3(.55,.30,.95) : gC==2? vec3(.95,.80,.35)
+            : gC==3? vec3(.85,.35,.40) : gC==4? vec3(.35,.85,.95) : vec3(.70,.95,.25);
+  lin += peak*gE*(.10+rim*.55)*o;
+  O=vec4(pow(clamp(lin,0.,1.),vec3(.4545)),1.);
+}
+`;
+const VS=`#version 300 es
+in vec2 a; void main(){gl_Position=vec4(a,0.,1.);}`;
+const VIEWS=[{"t": "전신 · 정면", "y": 0.0, "p": 0.06, "d": 2.8, "g": [0, -0.08, 0], "e": 0.0, "o": 0}, {"t": "전신 · 측면", "y": 1.5708, "p": 0.04, "d": 2.8, "g": [0, -0.08, 0], "e": 0.0, "o": 0}, {"t": "전신 · 3/4", "y": 0.62, "p": 0.1, "d": 2.8, "g": [0, -0.08, 0], "e": 0.0, "o": 0}, {"t": "전신 · 뒷면", "y": 3.1416, "p": 0.06, "d": 2.8, "g": [0, -0.08, 0], "e": 0.0, "o": 0}, {"t": "얼굴 · 정면", "y": 0.0, "p": 0.02, "d": 1.3, "g": [0, 0.02, 0.34], "e": 0.0, "o": 0}, {"t": "얼굴 · 3/4", "y": 0.7, "p": 0.07, "d": 1.3, "g": [0, 0.02, 0.34], "e": 0.0, "o": 0}, {"t": "접힌 살 — 주름이 얼굴처럼 보인다", "y": -0.45, "p": 0.06, "d": 1.15, "g": [-0.34, -0.16, 0.3], "e": 0.0, "o": 0}, {"t": "로우 앵글", "y": 0.25, "p": -0.26, "d": 2.8, "g": [0, -0.08, 0], "e": 0.0, "o": 0}, {"t": "표정 · 평상", "y": 0.0, "p": 0.02, "d": 1.3, "g": [0, 0.02, 0.34], "e": 0.0, "o": 0}, {"t": "표정 · 전조", "y": 0.0, "p": 0.02, "d": 1.3, "g": [0, 0.02, 0.34], "e": 0.42, "o": 0}, {"t": "표정 · 사고", "y": 0.0, "p": 0.02, "d": 1.3, "g": [0, 0.02, 0.34], "e": 0.72, "o": 0}, {"t": "표정 · 극단", "y": 0.0, "p": 0.02, "d": 1.3, "g": [0, 0.02, 0.34], "e": 1.0, "o": 0}];
+const cv=document.getElementById('cv'), gl=cv.getContext('webgl2',{antialias:false});
+const fail=m=>document.querySelector('.stage').insertAdjacentHTML('beforeend',
+ '<p style="position:absolute;inset:0;display:grid;place-items:center;padding:24px;text-align:center;'+
+ 'color:#f6efe2;background:rgba(12,8,16,.9)">'+m+'</p>');
+if(!gl) fail('이 브라우저는 WebGL2를 지원하지 않습니다.');
+else{
+ const mk=(ty,s)=>{const o=gl.createShader(ty);gl.shaderSource(o,s);gl.compileShader(o);
+  if(!gl.getShaderParameter(o,gl.COMPILE_STATUS)){console.error(gl.getShaderInfoLog(o));return null}return o};
+ const vs=mk(gl.VERTEX_SHADER,VS), fs=mk(gl.FRAGMENT_SHADER,FS);
+ if(!vs||!fs) fail('이 기기의 그래픽 드라이버가 모델을 그리지 못했습니다.<br>다른 브라우저에서 열어 주세요.');
+ else{
+  const pr=gl.createProgram();gl.attachShader(pr,vs);gl.attachShader(pr,fs);
+  gl.bindAttribLocation(pr,0,'a');gl.linkProgram(pr);
+  if(!gl.getProgramParameter(pr,gl.LINK_STATUS)){console.error(gl.getProgramInfoLog(pr));
+   fail('이 기기의 그래픽 드라이버가 모델을 그리지 못했습니다.<br>다른 브라우저에서 열어 주세요.');}
+  else{
+   gl.useProgram(pr);
+   const b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);
+   gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
+   gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0);
+   gl.enable(gl.SCISSOR_TEST);
+   const U=n=>gl.getUniformLocation(pr,n);
+   const uR=U('iR'),uT=U('iT'),uE=U('iE'),uC=U('iCell'),uCam=U('iCam'),uTg=U('iTgt'),uF=U('iFov'),uP=U('iPose');
+   const t0=performance.now();
+   function fit(){const d=window.__dpr||Math.min(1.5,devicePixelRatio||1);
+    const w=Math.round(cv.clientWidth*d),h=Math.round(cv.clientHeight*d);
+    if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h}}
+   function frame(){ fit();
+    const tt=(performance.now()-t0)/1000,W=cv.width,H=cv.height,
+          cw=Math.ceil(W/4),chh=Math.ceil(H/3);
+    gl.viewport(0,0,W,H);gl.scissor(0,0,W,H);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);
+    VIEWS.forEach((v,i)=>{
+     const x=(i%4)*cw, y=(2-Math.floor(i/4))*chh;
+     gl.viewport(x,y,cw,chh);gl.scissor(x,y,cw,chh);
+     gl.uniform2f(uR,W,H);gl.uniform1f(uT,tt);gl.uniform1f(uE,v.e);
+     gl.uniform4f(uC,x,y,cw,chh);
+     gl.uniform3f(uCam,v.y,v.p,v.d);gl.uniform3f(uTg,v.g[0],v.g[1],v.g[2]);
+     gl.uniform1f(uF,2.30);gl.uniform1i(uP,v.o);
+     gl.drawArrays(gl.TRIANGLES,0,3);});
+    requestAnimationFrame(frame);}
+   addEventListener('resize',fit);frame();
+  }}}
+</script></body></html>

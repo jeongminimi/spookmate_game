@@ -188,23 +188,23 @@ vec2 mapKudan(vec3 p){
   /* 사람 얼굴 — 주둥이 없이 앞면을 납작하게 깎는다 */
   float hd=sdEll(q-hp,vec3(.225,.275,.215));
   hd=smax(hd,q.z-hp.z-.185,.075);                                  /* 얼굴 앞면을 평면으로 */
-  hd=smin(hd,sdEll(q-hp-vec3(0.,.055,.055),vec3(.205,.145,.185)),.09);  /* 이마 */
-  hd=smin(hd,sdEll(q-hp-vec3(0.,-.165,.055),vec3(.145,.095,.155)),.08); /* 턱 */
-  hd=smin(hd,sdCone(q,hp+vec3(0.,.015,.15),hp+vec3(0.,-.065,.21),.028,.045),.035); /* 코 */
+  hd=smin(hd,sdEll(q-hp-vec3(0.,.055,.020),vec3(.205,.145,.160)),.09);  /* 이마 */
+  hd=smin(hd,sdEll(q-hp-vec3(0.,-.165,.020),vec3(.145,.095,.135)),.08); /* 턱 */
+  hd=smin(hd,sdCone(q,hp+vec3(0.,.020,.135),hp+vec3(0.,-.070,.200),.026,.040),.040); /* 코 */
   if(hd<r.x)r=vec2(hd,2.);
   /* 눈 — 흰자를 드러내서 불안해 보이게 */
-  float ew=min(sdEll(q-hp-vec3(-.098,.015,.168),vec3(.062,.055,.035)),
-               sdEll(q-hp-vec3( .098,.015,.168),vec3(.062,.055,.035)));
+  float ew=min(sdEll(q-hp-vec3(-.100,.018,.168),vec3(.064,.056,.062)),
+               sdEll(q-hp-vec3( .100,.018,.168),vec3(.064,.056,.062)));
   if(ew<r.x)r=vec2(ew,3.);
-  float pu=min(length(q-hp-vec3(-.098,.002,.205))-.027,
-               length(q-hp-vec3( .098,.002,.205))-.027);
+  float pu=min(length(q-hp-vec3(-.100,.006,.205))-.023,
+               length(q-hp-vec3( .100,.006,.205))-.023);
   if(pu<r.x)r=vec2(pu,4.);
   /* 치켜올린 눈썹 */
-  float bw=min(sdBox(rotZ(q-hp-vec3(-.105,.108,.185),-.30),vec3(.072,.013,.016),.008),
-               sdBox(rotZ(q-hp-vec3( .105,.108,.185), .30),vec3(.072,.013,.016),.008));
+  float bw=min(sdBox(rotZ(q-hp-vec3(-.104,.106,.182),-.36),vec3(.062,.009,.014),.006),
+               sdBox(rotZ(q-hp-vec3( .104,.106,.182), .36),vec3(.062,.009,.014),.006));
   if(bw<r.x)r=vec2(bw,4.);
   /* 말하는 입 */
-  float mo=sdEll(q-hp-vec3(0.,-.155,.165),vec3(.052,.022+talk*.034,.045));
+  float mo=sdEll(q-hp-vec3(0.,-.150,.168),vec3(.050,.020+talk*.032,.034));
   if(mo<r.x)r=vec2(mo,4.);
   /* 소 귀 + 작은 뿔 */
   float ea=min(sdEll(rotZ(q-hp-vec3(-.245,.03,-.03),.6),vec3(.125,.055,.075)),
