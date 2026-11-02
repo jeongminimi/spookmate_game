@@ -87,17 +87,30 @@ function drawFG(c){
     const pulse=.45+Math.abs(Math.sin(S.t*15))*.55;
     c.globalAlpha=pulse*.2; c.fillStyle=col; c.fillRect(0,0,CW,CH); c.globalAlpha=1;
     c.globalAlpha=pulse; c.strokeStyle=col; c.lineWidth=7; c.strokeRect(3.5,3.5,CW-7,CH-7); c.globalAlpha=1;
+  } else if(S.ask){
+    const p=.3+Math.abs(Math.sin(S.t*6))*.45;
+    c.globalAlpha=p*.72; c.strokeStyle='#ffd23f'; c.lineWidth=4; c.strokeRect(2.5,2.5,CW-5,CH-5); c.globalAlpha=1;
   }
 
   /* CCTV 띠 */
   c.fillStyle='rgba(16,10,22,.78)'; c.fillRect(0,252,CW,CH-252);
   c.fillStyle='rgba(255,255,255,.12)'; c.fillRect(0,252,CW,1);
+  /* 남은 근무 시간 — 띠 맨 위에 얇게 */
+  {const left=clamp(1-S.t/DAY,0,1);
+   c.fillStyle=left>.25?'rgba(255,245,224,.42)':'#ff8a3d';
+   c.fillRect(0,252,CW*left,2);}
   if(S.st==='warn'){
     const red=S.warnKind==='R', col=red?'#ff6b60':'#8ad2f8', left=S.warnT/S.warnMax;
     c.textAlign='center'; c.fillStyle=col; c.font='700 15px sans-serif';
     c.fillText(red?'폭주 직전 — 주의!':'무너지기 직전 — 칭찬!',200,270);
     c.fillStyle='rgba(0,0,0,.45)'; rr(c,96,276,208,10,5); c.fill();
     c.fillStyle=col; rr(c,96,276,Math.max(5,208*left),10,5); c.fill();
+  } else if(S.ask){
+    const left=clamp(S.askT/S.askMax,0,1);
+    c.textAlign='center'; c.fillStyle='#ffd23f'; c.font='700 15px sans-serif';
+    c.fillText('뭐라고 답할까 — 주의 / 칭찬',200,270);
+    c.fillStyle='rgba(0,0,0,.45)'; rr(c,96,276,208,10,5); c.fill();
+    c.fillStyle=left>.35?'#ffd23f':'#ff8a3d'; rr(c,96,276,Math.max(5,208*left),10,5); c.fill();
   } else {
     c.textAlign='left'; c.font='700 10px ui-monospace,monospace'; c.fillStyle='rgba(255,245,224,.88)';
     c.fillText('MOOD',12,266);

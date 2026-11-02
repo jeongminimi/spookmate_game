@@ -3,7 +3,21 @@
 const $ = s => document.querySelector(s);
 const clamp = (v,a,b) => Math.max(a,Math.min(b,v));
 const rnd = (a,b) => a + Math.random()*(b-a);
-const pick = a => a[Math.floor(Math.random()*a.length)];
+/* 섞은 주머니 방식 — 한 바퀴 다 쓰기 전에는 같은 대사가 다시 안 나온다.
+   풀이 4~6개뿐이라 순수 무작위로는 반복이 금방 눈에 띈다. */
+const _bag=new WeakMap(), _last=new WeakMap();
+const pick = a => {
+  if(!a||!a.length) return '';
+  if(a.length<2) return a[0];
+  let b=_bag.get(a);
+  if(!b||!b.length){
+    b=a.map((_,i)=>i);
+    for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]];}
+    if(b[b.length-1]===_last.get(a)) [b[0],b[b.length-1]]=[b[b.length-1],b[0]];
+    _bag.set(a,b);
+  }
+  const i=b.pop(); _last.set(a,i); return a[i];
+};
 
 const GL = {
   cv:null, gl:null, u:{}, ok:false,

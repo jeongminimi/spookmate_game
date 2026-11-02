@@ -1,7 +1,12 @@
 
 /* ───────── 화면 전환 · 배선 · 메인 루프 ───────── */
 let SEL='yacha';
-const GRADE=d=>d>=14?['설거지 장인','이 집은 네가 접수했다']:d>=8?['그럭저럭','밥값은 했다']:d>=4?['겨우 밥값','월세는 반만 깎아준다']:['오늘은 적자','그릇이 더 늘었다'];
+/* 요괴마다 속도가 달라 같은 잣대를 못 쓴다. 기준은 봇 800판 분포에서 뽑았다. */
+const GRADE=(d,id)=>{const g=SPEC[id].grade;
+  return d>=g[0]?['설거지 장인','이 집은 네가 접수했다']
+       : d>=g[1]?['그럭저럭','밥값은 했다']
+       : d>=g[2]?['겨우 밥값','월세는 반만 깎아준다']
+       : ['오늘은 적자','그릇이 더 늘었다'];};
 
 function renderPick(){
   S.on=false;
@@ -26,11 +31,12 @@ function selectChar(k,quiet){
 }
 
 function showResult(reason){
-  const id=S.id,y=Y[id],L=LINE[id],d=S.dish,[gt,gs]=GRADE(d);
+  const id=S.id,y=Y[id],L=LINE[id],d=S.dish,[gt,gs]=GRADE(d,id);
   const prev=SAVE.best[id]||0, best=d>prev;
   SAVE.best[id]=Math.max(prev,d); SAVE.wallet+=d; SAVE.days++; saveSave();
   $('#wallet').textContent=SAVE.wallet;
-  $('#rKick').textContent=reason==='quit'?'조기 퇴근 · 오늘의 CCTV':`사고 ${3-S.lives}건 · 오늘의 CCTV`;
+  $('#rKick').textContent=reason==='quit'?'조기 퇴근 · 오늘의 CCTV'
+    :reason==='time'?`퇴근 시간 · 사고 ${3-S.lives}건`:`사고 ${3-S.lives}건 · 오늘의 CCTV`;
   $('#rTitle').textContent=`${y.name}, ${gt}`;
   $('#payDish').textContent=d;$('#payToken').textContent=d;$('#payTotal').textContent=SAVE.wallet;
   const cl=S.clips;
@@ -58,7 +64,7 @@ let last=0, pt=0;
 function frame(ms){
   requestAnimationFrame(frame);
   const dt=Math.min(.05,(ms-last)/1000||0); last=ms; pt+=dt;
-  const playing=!$('#play').hidden;
+  const playing=!$('#play').hidden && !window.__bot;
   if(playing){
     GL.tune(dt);
     step(dt);
@@ -74,9 +80,22 @@ function frame(ms){
 }
 
 /* 배선 */
+function fatal(msg,sub){
+  document.body.insertAdjacentHTML('beforeend',
+    '<div style="position:fixed;inset:0;z-index:999;display:grid;place-items:center;padding:24px;'+
+    'background:rgba(12,8,16,.94);backdrop-filter:blur(3px);text-align:center">'+
+    '<div style="max-width:320px"><div style="font-size:40px;margin-bottom:12px">🕯️</div>'+
+    '<p style="font:700 17px/1.5 sans-serif;color:#fff6e2;margin:0 0 10px">'+msg+'</p>'+
+    '<p style="font:400 14px/1.6 sans-serif;color:#b6adc4;margin:0">'+sub+'</p></div></div>');
+}
 if(!GL.init()){
-  document.body.insertAdjacentHTML('afterbegin',
-    '<p style="padding:14px;background:#3a2030;border-radius:12px;margin:0 0 12px">이 브라우저가 WebGL2를 지원하지 않아 요괴를 그릴 수 없습니다. 다른 브라우저에서 열어 주세요.</p>');
+  fatal('이 브라우저에서는 요괴가 나타나지 않습니다.',
+        '요괴를 그리려면 WebGL2가 필요한데, 이 브라우저에는 없습니다. 크롬이나 사파리 최신 버전에서 열어 주세요.');
+} else {
+  /* 모바일 GPU는 메모리가 부족하면 그리기 맥락을 통째로 회수한다.
+     그대로 두면 요괴만 사라진 채 게임이 계속 돌아간다. */
+  $('#char').addEventListener('webglcontextlost', e=>{ e.preventDefault(); GL.ok=false;
+    fatal('그래픽이 끊겼습니다.','기기가 메모리를 회수했습니다. 새로고침하면 다시 시작됩니다.'); });
 }
 $('#tabs').addEventListener('click',e=>{const b=e.target.closest('.tab');if(b)selectChar(b.dataset.k);});
 $('#btnGo').addEventListener('click',()=>startDay(SEL));
@@ -92,4 +111,6 @@ addEventListener('keydown',e=>{if($('#play').hidden)return;
 addEventListener('resize',()=>{layout();if(!$('#play').hidden)drawBG($('#bgc').getContext('2d'));});
 renderPick();
 requestAnimationFrame(frame);
+/* 밸런스 자동 측정용 고리 — 봇이 렌더링 없이 로직만 돌린다 */
+window.__t={startDay,step,doWarn,doPraise,S};
 })();
